@@ -1,17 +1,8 @@
-use libc::{c_char, c_int, c_void};
+use libc::{c_char, c_int};
 
 use super::wren;
 
-#[repr(C)]
-pub(crate) enum ApiType {
-    Dome,
-    Wren,
-    Audio,
-}
-
-pub(crate) const DOME_API_VERSION: c_int = 0;
-pub(crate) const WREN_API_VERSION: c_int = 0;
-pub(crate) const AUDIO_API_VERSION: c_int = 0;
+pub(crate) const API_VERSION: c_int = 0;
 
 #[repr(C)]
 pub(crate) struct FakeContext {
@@ -24,6 +15,16 @@ pub(crate) enum Result {
     Success,
     Failure,
     Unknown,
+}
+
+impl From<std::result::Result<(), ()>> for Result {
+    fn from(value: std::result::Result<(), ()>) -> Self {
+        if value.is_ok() {
+            Self::Success
+        } else {
+            Self::Failure
+        }
+    }
 }
 
 pub(crate) type PluginHook = extern "C" fn(context: Context);
@@ -59,11 +60,5 @@ pub(crate) struct ApiV0 {
     ) -> Result,
     pub(crate) lock_module: extern "C" fn(ctx: Context, name: *const c_char),
     pub(crate) get_context: extern "C" fn(vm: wren::VM) -> Context,
-    pub(crate) log: unsafe extern "C" fn(ctx: Context, text: *const c_char, ...) -> Context,
-}
-
-pub(crate) type GetApiFunction = extern "C" fn(api: ApiType, version: c_int) -> *mut c_void;
-extern "C" {
-    #[allow(non_snake_case)]
-    fn DOME_getAPI(api: ApiType, version: c_int);
+    pub(crate) log: unsafe extern "C" fn(ctx: Context, text: *const c_char, ...),
 }

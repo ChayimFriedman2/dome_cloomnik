@@ -1,7 +1,9 @@
-use libc::{c_float, c_void, size_t};
+use libc::{c_float, c_int, c_void, size_t};
 
 use super::dome;
 use super::wren;
+
+pub(crate) const API_VERSION: c_int = 0;
 
 pub(crate) type ChannelId = u64;
 

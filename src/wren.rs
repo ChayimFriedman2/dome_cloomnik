@@ -2,6 +2,8 @@ use libc::{c_char, c_double, c_int, c_void, size_t};
 
 use super::dome;
 
+pub(crate) const API_VERSION: c_int = 0;
+
 #[repr(C)]
 pub(crate) struct FakeVM {
     _private: [u8; 0],
