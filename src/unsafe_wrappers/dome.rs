@@ -14,6 +14,7 @@ pub(crate) type Context = *mut FakeContext;
 pub(crate) enum Result {
     Success,
     Failure,
+    #[allow(unused)]
     Unknown,
 }
 
@@ -27,19 +28,18 @@ impl From<std::result::Result<(), ()>> for Result {
     }
 }
 
-pub(crate) type PluginHook = extern "C" fn(context: Context);
+impl From<Result> for std::result::Result<(), ()> {
+    fn from(value: Result) -> Self {
+        if let Result::Success = value {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+}
+
 pub(crate) type ForeignFn = wren::ForeignMethodFn;
 pub(crate) type FinalizerFn = wren::FinalizerFn;
-
-#[repr(C)]
-pub(crate) struct Plugin {
-    pub(crate) name: *const c_char,
-    pub(crate) pre_update: PluginHook,
-    pub(crate) post_update: PluginHook,
-    pub(crate) pre_draw: PluginHook,
-    pub(crate) post_draw: PluginHook,
-    pub(crate) on_shutdown: PluginHook,
-}
 
 #[repr(C)]
 pub(crate) struct ApiV0 {

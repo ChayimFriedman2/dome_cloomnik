@@ -14,13 +14,15 @@ pub(crate) struct FakeEngine {
 pub(crate) type Engine = *mut FakeEngine;
 
 #[repr(C)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct ChannelRef {
     pub(crate) id: ChannelId,
     pub(crate) engine: Engine,
 }
 
 #[repr(C)]
-pub(crate) enum ChannelState {
+#[derive(Debug, Clone, Copy)]
+pub enum ChannelState {
     Invalid,
     Initialize,
     ToPlay,
@@ -40,15 +42,15 @@ pub(crate) type ChannelCallback = extern "C" fn(channel_ref: ChannelRef, vm: wre
 
 #[repr(C)]
 pub(crate) struct ApiV0 {
-    channel_create: extern "C" fn(
+    pub(crate) channel_create: extern "C" fn(
         ctx: dome::Context,
         mix: ChannelMix,
         update: ChannelCallback,
         finish: ChannelCallback,
         user_data: *mut c_void,
-    ),
-    get_state: extern "C" fn(channel_ref: ChannelRef) -> ChannelState,
-    set_state: extern "C" fn(channel_ref: ChannelRef, state: ChannelState),
-    stop: extern "C" fn(channel_ref: ChannelRef),
-    get_data: extern "C" fn(channel_ref: ChannelRef) -> *mut c_void,
+    ) -> ChannelRef,
+    pub(crate) get_state: extern "C" fn(channel_ref: ChannelRef) -> ChannelState,
+    pub(crate) set_state: extern "C" fn(channel_ref: ChannelRef, state: ChannelState),
+    pub(crate) stop: extern "C" fn(channel_ref: ChannelRef),
+    pub(crate) get_data: extern "C" fn(channel_ref: ChannelRef) -> *mut c_void,
 }

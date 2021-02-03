@@ -13,8 +13,9 @@ pub(crate) type VM = *mut FakeVM;
 pub(crate) type ForeignMethodFn = extern "C" fn(VM);
 pub(crate) type FinalizerFn = extern "C" fn(*mut c_void);
 
+#[derive(Debug, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) enum Type {
+pub enum Type {
     Bool,
     Num,
     Foreign,
@@ -48,10 +49,10 @@ pub(crate) struct ApiV0 {
     pub(crate) get_slot_string: unsafe extern "C" fn(vm: VM, slot: c_int) -> *const c_char,
     pub(crate) get_slot_bytes:
         unsafe extern "C" fn(vm: VM, slot: c_int, length: *mut c_int) -> *const c_char,
-    pub(crate) get_slot_foreign: unsafe extern "C" fn(vm: VM, slot: c_int) -> *const c_void,
+    pub(crate) get_slot_foreign: unsafe extern "C" fn(vm: VM, slot: c_int) -> *mut c_void,
 
     pub(crate) abort_fiber: unsafe extern "C" fn(vm: VM, slot: c_int),
-    pub(crate) get_slot_count: extern "C" fn(vm: VM),
+    pub(crate) get_slot_count: extern "C" fn(vm: VM) -> c_int,
     pub(crate) get_slot_type: unsafe extern "C" fn(vm: VM, slot: c_int) -> Type,
 
     pub(crate) get_list_count: unsafe extern "C" fn(vm: VM, slot: c_int) -> c_int,
@@ -62,7 +63,7 @@ pub(crate) struct ApiV0 {
     pub(crate) insert_in_list:
         unsafe extern "C" fn(vm: VM, list_slot: c_int, index: c_int, element_slot: c_int),
 
-    pub(crate) get_map_count: unsafe extern "C" fn(vm: VM, slot: c_int),
+    pub(crate) get_map_count: unsafe extern "C" fn(vm: VM, slot: c_int) -> c_int,
     pub(crate) get_map_contains_key:
         unsafe extern "C" fn(vm: VM, map_slot: c_int, key_slot: c_int) -> bool,
     pub(crate) get_map_value:
