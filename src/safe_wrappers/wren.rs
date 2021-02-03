@@ -47,8 +47,6 @@ impl VM {
     #[inline]
     pub unsafe fn get_slot_type_unchecked(self, slot: usize) -> Type {
         ((*API.wren).get_slot_type)(self.0, slot.try_into().unwrap())
-            .try_into()
-            .unwrap()
     }
     #[inline]
     pub fn get_slot_type(self, slot: usize) -> Type {
