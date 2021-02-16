@@ -42,7 +42,7 @@
 //!     }
 //! }
 //!
-//! fn on_init(ctx: Context) -> Result<(), ()> {
+//! fn on_init(mut ctx: Context) -> Result<(), ()> {
 //!     register_modules! {
 //!         ctx,
 //!         ...
@@ -51,23 +51,23 @@
 //!     // ...
 //! }
 //!
-//! fn pre_update(ctx: Context) -> Result<(), ()> {
+//! fn pre_update(mut ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn post_update(ctx: Context) -> Result<(), ()> {
+//! fn post_update(mut ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn pre_draw(ctx: Context) -> Result<(), ()> {
+//! fn pre_draw(mut ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn post_draw(ctx: Context) -> Result<(), ()> {
+//! fn post_draw(mut ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn on_shutdown(ctx: Context) -> Result<(), ()> {
+//! fn on_shutdown(mut ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //! ```
@@ -108,8 +108,14 @@ pub fn __catch_panic_from_foreign<R>(
     callback: impl FnOnce() -> R + std::panic::UnwindSafe,
 ) -> Option<R> {
     panic::catch_panic(callback)
-        .map_err(|panic_message| panic::handle_wren_callback_panic(vm, &panic_message))
+        .map_err(|panic_message| panic::handle_wren_callback_panic(vm.0, &panic_message))
         .ok()
+}
+#[doc(hidden)]
+#[allow(non_camel_case_types)]
+#[inline]
+pub unsafe fn __clone_vm(vm: &WrenVM) -> WrenVM {
+    WrenVM(vm.0)
 }
 
 #[repr(C)]

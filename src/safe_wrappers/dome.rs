@@ -45,7 +45,7 @@ impl Context<'_> {
     /// .unwrap();
     /// ```
     #[inline]
-    pub fn register_module(&self, name: &str, source: &str) -> Result {
+    pub fn register_module(&mut self, name: &str, source: &str) -> Result {
         let name = CString::new(name).expect("Module name contains null byte(s).");
         let source = CString::new(source).expect("Source contains null byte(s).");
         (Api::dome().register_module)(self.0, name.as_ptr(), source.as_ptr()).into()
@@ -87,7 +87,12 @@ impl Context<'_> {
     /// # }
     /// ```
     #[inline]
-    pub unsafe fn register_fn(&self, module: &str, signature: &str, method: ForeignFn) -> Result {
+    pub unsafe fn register_fn(
+        &mut self,
+        module: &str,
+        signature: &str,
+        method: ForeignFn,
+    ) -> Result {
         let module = CString::new(module).expect("Method name contains null byte(s).");
         let signature = CString::new(signature).expect("Method signature contains null byte(s).");
         (Api::dome().register_fn)(
@@ -132,7 +137,7 @@ impl Context<'_> {
     /// ```
     #[inline]
     pub unsafe fn register_class(
-        &self,
+        &mut self,
         module_name: &str,
         class_name: &str,
         allocate: ForeignFn,
@@ -157,14 +162,14 @@ impl Context<'_> {
     ///
     /// It is even more recommended to use [`register_modules!`], which does so automatically.
     #[inline]
-    pub fn lock_module(&self, name: &str) {
+    pub fn lock_module(&mut self, name: &str) {
         let name = CString::new(name).expect("Module name contains null byte(s).");
         (Api::dome().lock_module)(self.0, name.as_ptr())
     }
 
     /// Logs text to the DOME-out.log file and possibly to the console.
     #[inline]
-    pub fn log(&self, text: &str) {
+    pub fn log(&mut self, text: &str) {
         let fmt = CString::new("%s").unwrap();
         let text = CString::new(text).expect("Text contains null byte(s).");
         // SAFETY: We respect C format specifiers.
@@ -241,7 +246,7 @@ impl Context<'_> {
 ///     fn new(_vm: &WrenVM) -> Self {
 ///         MyType
 ///     }
-///     fn foreign_subscript_setter(_vm: &WrenVM) {}
+///     fn foreign_subscript_setter(_vm: &mut WrenVM) {}
 /// }
 /// #[derive(Debug)]
 /// struct MyOtherType(f64);
@@ -249,7 +254,7 @@ impl Context<'_> {
 ///     fn construct(vm: &WrenVM) -> Self {
 ///         MyOtherType(vm.get_slot_double(1))
 ///     }
-///     fn foreign_method(&mut self, _vm: &WrenVM) {}
+///     fn foreign_method(&mut self, _vm: &mut WrenVM) {}
 /// }
 /// impl Drop for MyOtherType {
 ///     fn drop(&mut self) {
@@ -259,7 +264,7 @@ impl Context<'_> {
 /// mod non_foreign {
 ///     pub(super) struct SomeOtherClass;
 ///     impl SomeOtherClass {
-///         pub(super) fn foreign_getter(vm: &WrenVM) {}
+///         pub(super) fn foreign_getter(vm: &mut WrenVM) {}
 ///     }
 /// }
 /// register_modules! {
@@ -566,7 +571,7 @@ macro_rules! __register_modules_impl {
             $($rest:tt)*
         }]
     } => {{
-        extern "C" fn __dome_cloomnik_class_allocate(vm: $crate::WrenVM) {
+        extern "C" fn __dome_cloomnik_class_allocate(mut vm: $crate::WrenVM) {
             if let Some(instance) = $crate::__catch_panic_from_foreign(&vm, || {
                 <$foreign_type>::$constructor(&vm)
             }) {
@@ -679,7 +684,7 @@ macro_rules! __register_modules_impl {
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
     } => {{
         extern "C" fn __dome_cloomnik_method(vm: $crate::WrenVM) {
-            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&vm));
+            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&mut vm));
         }
         unsafe {
             $ctx.register_fn(
@@ -714,7 +719,7 @@ macro_rules! __register_modules_impl {
             $crate::__catch_panic_from_foreign(&vm, || {
                 <$($type)+>::$method(
                     $(unsafe { vm.get_slot_foreign_unchecked::<$($foreign_type)+>(0) },)?
-                    &vm,
+                    &mut unsafe { $crate::__clone_vm(&vm) },
                 )
             });
         }
@@ -748,7 +753,7 @@ macro_rules! __register_modules_impl {
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
     } => {{
         extern "C" fn __dome_cloomnik_method(vm: $crate::WrenVM) {
-            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&vm));
+            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&mut vm));
         }
         unsafe {
             $ctx.register_fn(
@@ -783,7 +788,7 @@ macro_rules! __register_modules_impl {
             $crate::__catch_panic_from_foreign(&vm, || {
                 <$($type)+>::$method(
                     $(unsafe { vm.get_slot_foreign_unchecked::<$($foreign_type)+>(0) },)?
-                    &vm,
+                    &mut unsafe { $crate::__clone_vm(&vm) },
                 )
             });
         }
@@ -817,7 +822,7 @@ macro_rules! __register_modules_impl {
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
     } => {{
         extern "C" fn __dome_cloomnik_method(vm: $crate::WrenVM) {
-            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&vm));
+            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&mut vm));
         }
         unsafe {
             $ctx.register_fn(
@@ -857,7 +862,7 @@ macro_rules! __register_modules_impl {
             $crate::__catch_panic_from_foreign(&vm, || {
                 <$($type)+>::$method(
                     $(unsafe { vm.get_slot_foreign_unchecked::<$($foreign_type)+>(0) },)?
-                    &vm,
+                    &mut unsafe { $crate::__clone_vm(&vm) },
                 )
             });
         }
@@ -896,7 +901,7 @@ macro_rules! __register_modules_impl {
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
     } => {{
         extern "C" fn __dome_cloomnik_method(vm: $crate::WrenVM) {
-            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&vm));
+            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&mut vm));
         }
         unsafe {
             $ctx.register_fn(
@@ -934,7 +939,7 @@ macro_rules! __register_modules_impl {
             $crate::__catch_panic_from_foreign(&vm, || {
                 <$($type)+>::$method(
                     $(unsafe { vm.get_slot_foreign_unchecked::<$($foreign_type)+>(0) },)?
-                    &vm,
+                    &mut unsafe { $crate::__clone_vm(&vm) },
                 )
             });
         }
@@ -971,7 +976,7 @@ macro_rules! __register_modules_impl {
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
     } => {{
         extern "C" fn __dome_cloomnik_method(vm: $crate::WrenVM) {
-            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&vm));
+            $crate::__catch_panic_from_foreign(&vm, || <$($type)+>::$method(&mut vm));
         }
         unsafe {
             $ctx.register_fn(
@@ -1009,7 +1014,7 @@ macro_rules! __register_modules_impl {
             $crate::__catch_panic_from_foreign(&vm, || {
                 <$($type)+>::$method(
                     $(unsafe { vm.get_slot_foreign_unchecked::<$($foreign_type)+>(0) },)?
-                    &vm,
+                    &mut unsafe { $crate::__clone_vm(&vm) },
                 )
             });
         }

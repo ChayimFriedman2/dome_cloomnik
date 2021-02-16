@@ -34,7 +34,7 @@ impl ExternalClass {
     }
 }
 
-fn on_init(ctx: Context) -> Result<(), ()> {
+fn on_init(mut ctx: Context) -> Result<(), ()> {
     ctx.log("Initialising external module\n");
 
     register_modules! {

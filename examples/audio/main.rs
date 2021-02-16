@@ -239,7 +239,7 @@ fn synth_update(channel: &CallbackChannel<Synth>, _vm: &WrenVM) {
 struct SynthClass(Channel<Synth>);
 impl SynthClass {
     fn new(vm: &WrenVM) -> Self {
-        let ctx = vm.get_context();
+        let mut ctx = vm.get_context();
         ctx.log("Creating channel\n");
         let mut channel = ctx.create_channel(
             synth_mix,
@@ -281,7 +281,7 @@ impl SynthClass {
         self.synth_mut().volume = 0.0f32.max(vm.get_slot_double(1) as f32);
     }
 
-    fn get_volume(&mut self, vm: &WrenVM) {
+    fn get_volume(&mut self, vm: &mut WrenVM) {
         vm.set_slot_double(0, self.synth().volume as f64);
     }
 
@@ -293,7 +293,7 @@ impl SynthClass {
 
         synth.activate();
 
-        let ctx = vm.get_context();
+        let mut ctx = vm.get_context();
         ctx.log("Begin");
         ctx.log(&format!("Frequency: {}\n", synth.frequency));
     }
@@ -308,7 +308,7 @@ impl SynthClass {
 
         synth.activate();
 
-        let ctx = vm.get_context();
+        let mut ctx = vm.get_context();
         ctx.log("Begin");
         ctx.log(&format!(
             "Octave: {} - Note: {} - Frequency: {}\n",
@@ -340,7 +340,7 @@ impl SynthClass {
         const DEFAULT_DURATION: i8 = 4;
         const DEFAULT_OCTAVE: i8 = 4;
 
-        let ctx = vm.get_context();
+        let mut ctx = vm.get_context();
         let pattern_str = vm.get_slot_bytes(1);
 
         let pattern = pattern_str
@@ -410,7 +410,7 @@ impl SynthClass {
     }
 }
 
-fn on_init(ctx: Context) -> Result<(), ()> {
+fn on_init(mut ctx: Context) -> Result<(), ()> {
     ctx.log("init hook triggered\n");
 
     register_modules! {

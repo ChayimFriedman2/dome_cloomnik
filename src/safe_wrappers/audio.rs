@@ -91,7 +91,7 @@ fn handle_mix_error(vm: unsafe_wren::VM, mix_error: &Mutex<Option<CString>>) {
     // behavior) since the mutex locking can only fail if it is poisoned (a thread
     // panicked while holding it), and we know we never panic while holding this mutex
     if let Some(panic_message) = mix_error.lock().unwrap().take() {
-        handle_wren_callback_panic(&wren::VM(vm), &panic_message);
+        handle_wren_callback_panic(vm, &panic_message);
     };
 }
 
@@ -104,7 +104,7 @@ pub(crate) extern "C" fn update(channel_ref: unsafe_audio::ChannelRef, vm: unsaf
     internal_data.update.map(|callback| {
         let error = catch_panic(|| callback(&channel_ref, &vm));
         if let Err(error) = error {
-            handle_wren_callback_panic(&wren::VM(vm), &error);
+            handle_wren_callback_panic(vm, &error);
         }
     });
 }
@@ -125,7 +125,7 @@ pub(crate) extern "C" fn finish(channel_ref: unsafe_audio::ChannelRef, vm: unsaf
     // it using `Box`.
     let error = catch_panic(|| unsafe { ((*internal_data).drop_fn)(internal_data) });
     if let Err(error) = error {
-        handle_wren_callback_panic(&wren::VM(vm), &error);
+        handle_wren_callback_panic(vm, &error);
         return;
     }
     // SAFETY: The memory was allocated via `Box`.

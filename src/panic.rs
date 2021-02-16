@@ -1,7 +1,6 @@
 use std::ffi::CString;
 use std::panic::{self, UnwindSafe};
 
-use crate::safe_wrappers::wren::VM;
 use crate::unsafe_wrappers::dome::Context;
 use crate::Api;
 
@@ -34,7 +33,9 @@ pub(crate) fn log_panic(ctx: Context, panic_message: &CString) {
 }
 
 #[inline]
-pub(crate) fn handle_wren_callback_panic(vm: &VM, panic_message: &CString) {
+pub(crate) fn handle_wren_callback_panic(vm: crate::unsafe_wren::VM, panic_message: &CString) {
+    let mut vm = crate::safe_wrappers::wren::VM(vm);
+
     log_panic(vm.get_context().0, panic_message);
 
     vm.ensure_slots(2);

@@ -52,7 +52,7 @@ impl VM {
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn ensure_slots(&self, slot_count: usize) {
+    pub fn ensure_slots(&mut self, slot_count: usize) {
         (Api::wren().ensure_slots)(self.0, slot_count.try_into().unwrap())
     }
 
@@ -116,14 +116,14 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_null_unchecked(&self, slot: usize) {
+    pub unsafe fn set_slot_null_unchecked(&mut self, slot: usize) {
         (Api::wren().set_slot_null)(self.0, slot.try_into().unwrap())
     }
     /// Sets `slot` to `null`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_null(&self, slot: usize) {
+    pub fn set_slot_null(&mut self, slot: usize) {
         self.validate_slot(slot);
         // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_null_unchecked(slot) }
@@ -137,14 +137,14 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_bool_unchecked(&self, slot: usize, value: bool) {
+    pub unsafe fn set_slot_bool_unchecked(&mut self, slot: usize, value: bool) {
         (Api::wren().set_slot_bool)(self.0, slot.try_into().unwrap(), value)
     }
     /// Sets `slot` to a `Bool`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_bool(&self, slot: usize, value: bool) {
+    pub fn set_slot_bool(&mut self, slot: usize, value: bool) {
         self.validate_slot(slot);
         // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_bool_unchecked(slot, value) }
@@ -158,14 +158,14 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_double_unchecked(&self, slot: usize, value: f64) {
+    pub unsafe fn set_slot_double_unchecked(&mut self, slot: usize, value: f64) {
         (Api::wren().set_slot_double)(self.0, slot.try_into().unwrap(), value)
     }
     /// Sets `slot` to a `Num`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_double(&self, slot: usize, value: f64) {
+    pub fn set_slot_double(&mut self, slot: usize, value: f64) {
         self.validate_slot(slot);
         // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_double_unchecked(slot, value) }
@@ -179,7 +179,7 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_bytes_unchecked(&self, slot: usize, data: &[u8]) {
+    pub unsafe fn set_slot_bytes_unchecked(&mut self, slot: usize, data: &[u8]) {
         (Api::wren().set_slot_bytes)(
             self.0,
             slot.try_into().unwrap(),
@@ -191,7 +191,7 @@ impl VM {
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_bytes(&self, slot: usize, data: &[u8]) {
+    pub fn set_slot_bytes(&mut self, slot: usize, data: &[u8]) {
         self.validate_slot(slot);
         // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_bytes_unchecked(slot, data) }
@@ -205,14 +205,14 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_string_unchecked(&self, slot: usize, text: &str) {
+    pub unsafe fn set_slot_string_unchecked(&mut self, slot: usize, text: &str) {
         self.set_slot_bytes_unchecked(slot, text.as_bytes())
     }
     /// Sets `slot` to a `String` from Rust `str`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_string(&self, slot: usize, text: &str) {
+    pub fn set_slot_string(&mut self, slot: usize, text: &str) {
         self.set_slot_bytes(slot, text.as_bytes())
     }
 
@@ -224,14 +224,14 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_new_list_unchecked(&self, slot: usize) {
+    pub unsafe fn set_slot_new_list_unchecked(&mut self, slot: usize) {
         (Api::wren().set_slot_new_list)(self.0, slot.try_into().unwrap())
     }
     /// Sets `slot` to a new `List`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_new_list(&self, slot: usize) {
+    pub fn set_slot_new_list(&mut self, slot: usize) {
         self.validate_slot(slot);
         // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_new_list_unchecked(slot) }
@@ -245,14 +245,14 @@ impl VM {
     ///
     /// You must not provide this function a `slot` that is not valid.
     #[inline]
-    pub unsafe fn set_slot_new_map_unchecked(&self, slot: usize) {
+    pub unsafe fn set_slot_new_map_unchecked(&mut self, slot: usize) {
         (Api::wren().set_slot_new_map)(self.0, slot.try_into().unwrap())
     }
     /// Sets `slot` to a new `Map`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_new_map(&self, slot: usize) {
+    pub fn set_slot_new_map(&mut self, slot: usize) {
         self.validate_slot(slot);
         // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_new_map_unchecked(slot) }
@@ -273,7 +273,7 @@ impl VM {
     /// for them).
     #[inline]
     pub unsafe fn set_slot_new_raw_foreign_unchecked(
-        &self,
+        &mut self,
         slot: usize,
         class_slot: usize,
         length: usize,
@@ -309,7 +309,7 @@ impl VM {
     /// for them).
     #[inline]
     pub unsafe fn set_slot_new_foreign_unchecked<T: 'static>(
-        &self,
+        &mut self,
         slot: usize,
         class_slot: usize,
         instance: T,
@@ -543,7 +543,7 @@ impl VM {
     /// a valid `element_slot`, and `index` that is in bounds.
     #[inline]
     pub unsafe fn get_list_element_unchecked(
-        &self,
+        &mut self,
         list_slot: usize,
         index: usize,
         element_slot: usize,
@@ -559,7 +559,7 @@ impl VM {
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn get_list_element(&self, list_slot: usize, index: usize, element_slot: usize) {
+    pub fn get_list_element(&mut self, list_slot: usize, index: usize, element_slot: usize) {
         self.validate_list_element(list_slot, index);
         self.validate_slot(element_slot);
         // SAFETY: We verified that `list_slot` exists and contains a `List`, `element_slot`
@@ -577,7 +577,7 @@ impl VM {
     /// a valid `element_slot`, and `index` that is in bounds.
     #[inline]
     pub unsafe fn set_list_element_unchecked(
-        &self,
+        &mut self,
         list_slot: usize,
         index: usize,
         element_slot: usize,
@@ -593,7 +593,7 @@ impl VM {
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_list_element(&self, list_slot: usize, index: usize, element_slot: usize) {
+    pub fn set_list_element(&mut self, list_slot: usize, index: usize, element_slot: usize) {
         self.validate_list_element(list_slot, index);
         self.validate_slot(element_slot);
         // SAFETY: We verified that `list_slot` exists and contains a `List`, `element_slot`
@@ -611,7 +611,7 @@ impl VM {
     /// a valid `element_slot`, and `index` that is in bounds.
     #[inline]
     pub unsafe fn insert_in_list_unchecked(
-        &self,
+        &mut self,
         list_slot: usize,
         index: usize,
         element_slot: usize,
@@ -627,7 +627,7 @@ impl VM {
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn insert_in_list(&self, list_slot: usize, index: usize, element_slot: usize) {
+    pub fn insert_in_list(&mut self, list_slot: usize, index: usize, element_slot: usize) {
         // We don't use `validate_list_element()` because insert allows one past the end
         let list_count: isize = self.get_list_count(list_slot).try_into().unwrap();
         let index_isize: isize = index.try_into().unwrap();
@@ -679,7 +679,7 @@ impl VM {
     /// that is valid.
     #[inline]
     pub unsafe fn get_map_value_unchecked(
-        &self,
+        &mut self,
         map_slot: usize,
         key_slot: usize,
         value_slot: usize,
@@ -699,7 +699,7 @@ impl VM {
     ///
     /// The value inside `key_slot` must be hashable.
     #[inline]
-    pub unsafe fn get_map_value(&self, map_slot: usize, key_slot: usize, value_slot: usize) {
+    pub unsafe fn get_map_value(&mut self, map_slot: usize, key_slot: usize, value_slot: usize) {
         self.validate_slot_type(map_slot, Type::Map);
         self.validate_slot(key_slot);
         self.validate_slot(value_slot);
@@ -717,7 +717,7 @@ impl VM {
     /// that is valid.
     #[inline]
     pub unsafe fn set_map_value_unchecked(
-        &self,
+        &mut self,
         map_slot: usize,
         key_slot: usize,
         value_slot: usize,
@@ -737,7 +737,7 @@ impl VM {
     ///
     /// The value inside `key_slot` must be hashable.
     #[inline]
-    pub unsafe fn set_map_value(&self, map_slot: usize, key_slot: usize, value_slot: usize) {
+    pub unsafe fn set_map_value(&mut self, map_slot: usize, key_slot: usize, value_slot: usize) {
         self.validate_slot_type(map_slot, Type::Map);
         self.validate_slot(key_slot);
         self.validate_slot(value_slot);
@@ -786,7 +786,7 @@ impl VM {
     /// that is valid.
     #[inline]
     pub unsafe fn remove_map_value_unchecked(
-        &self,
+        &mut self,
         map_slot: usize,
         key_slot: usize,
         removed_value_slot: usize,
@@ -808,7 +808,7 @@ impl VM {
     /// The value inside `key_slot` must be hashable.
     #[inline]
     pub unsafe fn remove_map_value(
-        &self,
+        &mut self,
         map_slot: usize,
         key_slot: usize,
         removed_value_slot: usize,
@@ -825,12 +825,12 @@ impl VM {
     ///
     /// `slot` must be valid.
     #[inline]
-    pub unsafe fn abort_fiber_unchecked(&self, slot: usize) {
+    pub unsafe fn abort_fiber_unchecked(&mut self, slot: usize) {
         (Api::wren().abort_fiber)(self.0, slot.try_into().unwrap())
     }
     /// Aborts the current fiber with the error at `slot`.
     #[inline]
-    pub fn abort_fiber(&self, slot: usize) {
+    pub fn abort_fiber(&mut self, slot: usize) {
         self.validate_slot(slot);
         // SAFETY: We verified that `slot` exists.
         unsafe { self.abort_fiber_unchecked(slot) }

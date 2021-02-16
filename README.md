@@ -46,7 +46,7 @@ extern "C" fn PLUGIN_onInit(get_api: *mut libc::c_void, ctx: *mut libc::c_void) 
     }
 }
 
-fn on_init(ctx: Context) -> Result<(), ()> {
+fn on_init(mut ctx: Context) -> Result<(), ()> {
     register_modules! {
         ctx,
         ...
@@ -55,23 +55,23 @@ fn on_init(ctx: Context) -> Result<(), ()> {
     // ...
 }
 
-fn pre_update(ctx: Context) -> Result<(), ()> {
+fn pre_update(mut ctx: Context) -> Result<(), ()> {
     // ...
 }
 
-fn post_update(ctx: Context) -> Result<(), ()> {
+fn post_update(mut ctx: Context) -> Result<(), ()> {
     // ...
 }
 
-fn pre_draw(ctx: Context) -> Result<(), ()> {
+fn pre_draw(mut ctx: Context) -> Result<(), ()> {
     // ...
 }
 
-fn post_draw(ctx: Context) -> Result<(), ()> {
+fn post_draw(mut ctx: Context) -> Result<(), ()> {
     // ...
 }
 
-fn on_shutdown(ctx: Context) -> Result<(), ()> {
+fn on_shutdown(mut ctx: Context) -> Result<(), ()> {
     // ...
 }
 ```
