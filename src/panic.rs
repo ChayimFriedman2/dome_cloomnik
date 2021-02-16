@@ -27,6 +27,7 @@ pub(crate) fn catch_panic<R>(callback: impl FnOnce() -> R + UnwindSafe) -> Resul
 #[inline]
 pub(crate) fn log_panic(ctx: Context, panic_message: &CString) {
     let fmt = CString::new("Plugin panicked: %s\n").unwrap();
+    // SAFETY: We respect C formatting.
     unsafe {
         (Api::dome().log)(ctx, fmt.as_ptr(), panic_message.as_ptr());
     }

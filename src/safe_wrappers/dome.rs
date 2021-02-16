@@ -167,6 +167,7 @@ impl Context<'_> {
     pub fn log(&self, text: &str) {
         let fmt = CString::new("%s").unwrap();
         let text = CString::new(text).expect("Text contains null byte(s).");
+        // SAFETY: We respect C format specifiers.
         unsafe { (Api::dome().log)(self.0, fmt.as_ptr(), text.as_ptr()) }
     }
 
@@ -556,6 +557,7 @@ macro_rules! __register_modules_impl {
             if let Some(instance) = $crate::__catch_panic_from_foreign(&vm, || {
                 <$foreign_type>::$constructor(&vm)
             }) {
+                // SAFETY: Wren calls the allocator with the foreign class on slot 0.
                 unsafe {
                     vm.set_slot_new_foreign_unchecked(0, 0, instance);
                 }
@@ -564,8 +566,13 @@ macro_rules! __register_modules_impl {
         extern "C" fn __dome_cloomnik_class_finalize(data: *mut $crate::__c_void) {
             let data = data as *mut $crate::__ForeignWrapper<$foreign_type>;
             // We cannot report the failure, but we still have to not panic
+            // SAFETY: The memory is valid for read/write and is properly aligned
+            // because `ForeignWrapper<T>` is align(1).
             let _ = ::std::panic::catch_unwind(|| unsafe { ::std::ptr::drop_in_place(data) });
         }
+        // SAFETY: The allocator always calls `vm.set_slot_new_foreign()` and both the allocator
+        // and the finalizer catch panics in user code. User code cannot store the VM because
+        // we pass it by reference.
         unsafe {
             $ctx.register_class(
                 $module,
@@ -619,6 +626,9 @@ macro_rules! __register_modules_impl {
     // while still associating them to the repetition, so that `macro_rules!` won't complain
     { @underscore $($t:tt)* } => { "_" };
 
+    // SAFETY notes for all methods registration:  The wrapper catches panics in user code.
+    // User code cannot store the VM because we pass it by reference. In instance method,
+    // Wren passes the receiver, which we know to be the foreign type, at slot 0.
     { @register_class_members
         ctx = [{ $ctx:expr }]
         module = [{ $module:literal }]

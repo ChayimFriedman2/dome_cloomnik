@@ -92,6 +92,7 @@ impl VM {
     #[inline]
     pub fn get_slot_type(&self, slot: usize) -> Type {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.get_slot_type_unchecked(slot) }
     }
 
@@ -124,6 +125,7 @@ impl VM {
     #[inline]
     pub fn set_slot_null(&self, slot: usize) {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_null_unchecked(slot) }
     }
 
@@ -144,6 +146,7 @@ impl VM {
     #[inline]
     pub fn set_slot_bool(&self, slot: usize, value: bool) {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_bool_unchecked(slot, value) }
     }
 
@@ -164,6 +167,7 @@ impl VM {
     #[inline]
     pub fn set_slot_double(&self, slot: usize, value: f64) {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_double_unchecked(slot, value) }
     }
 
@@ -189,6 +193,7 @@ impl VM {
     #[inline]
     pub fn set_slot_bytes(&self, slot: usize, data: &[u8]) {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_bytes_unchecked(slot, data) }
     }
 
@@ -228,6 +233,7 @@ impl VM {
     #[inline]
     pub fn set_slot_new_list(&self, slot: usize) {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_new_list_unchecked(slot) }
     }
 
@@ -248,6 +254,7 @@ impl VM {
     #[inline]
     pub fn set_slot_new_map(&self, slot: usize) {
         self.validate_slot(slot);
+        // SAFETY: We verified that the slot exists.
         unsafe { self.set_slot_new_map_unchecked(slot) }
     }
 
@@ -331,6 +338,7 @@ impl VM {
     #[inline]
     pub fn get_slot_bool(&self, slot: usize) -> bool {
         self.validate_slot_type(slot, Type::Bool);
+        // SAFETY: We verified that the slot exists and contains a `Bool`.
         unsafe { self.get_slot_bool_unchecked(slot) }
     }
 
@@ -351,6 +359,7 @@ impl VM {
     #[inline]
     pub fn get_slot_double(&self, slot: usize) -> f64 {
         self.validate_slot_type(slot, Type::Num);
+        // SAFETY: We verified that the slot exists and contains a `Num`.
         unsafe { self.get_slot_double_unchecked(slot) }
     }
 
@@ -380,6 +389,7 @@ impl VM {
     #[inline]
     pub fn get_slot_bytes(&self, slot: usize) -> Vec<u8> {
         self.validate_slot_type(slot, Type::String);
+        // SAFETY: We verified that the slot exists and contains a `String`.
         unsafe { self.get_slot_bytes_unchecked(slot) }
     }
 
@@ -422,6 +432,7 @@ impl VM {
     #[inline]
     pub fn get_slot_string(&self, slot: usize) -> std::result::Result<String, str::Utf8Error> {
         self.validate_slot_type(slot, Type::String);
+        // SAFETY: We verified that the slot exists and contains a `String`.
         unsafe { self.get_slot_string_unchecked(slot) }
     }
 
@@ -443,6 +454,7 @@ impl VM {
     #[inline]
     pub fn get_slot_raw_foreign(&self, slot: usize) -> *mut c_void {
         self.validate_slot_type(slot, Type::Foreign);
+        // SAFETY: We verified that the slot exists and contains a foreign object.
         unsafe { self.get_slot_raw_foreign_unchecked(slot) }
     }
     /// Gets a Rust foreign object from `slot`.
@@ -505,6 +517,7 @@ impl VM {
     #[inline]
     pub fn get_list_count(&self, slot: usize) -> usize {
         self.validate_slot_type(slot, Type::List);
+        // SAFETY: We verified that the slot exists and contains a `List`.
         unsafe { self.get_list_count_unchecked(slot) }
     }
 
@@ -549,6 +562,8 @@ impl VM {
     pub fn get_list_element(&self, list_slot: usize, index: usize, element_slot: usize) {
         self.validate_list_element(list_slot, index);
         self.validate_slot(element_slot);
+        // SAFETY: We verified that `list_slot` exists and contains a `List`, `element_slot`
+        // exists and `index` is valid.
         unsafe { self.get_list_element_unchecked(list_slot, index, element_slot) }
     }
 
@@ -581,6 +596,8 @@ impl VM {
     pub fn set_list_element(&self, list_slot: usize, index: usize, element_slot: usize) {
         self.validate_list_element(list_slot, index);
         self.validate_slot(element_slot);
+        // SAFETY: We verified that `list_slot` exists and contains a `List`, `element_slot`
+        // exists and `index` is valid.
         unsafe { self.set_list_element_unchecked(list_slot, index, element_slot) }
     }
 
@@ -623,6 +640,8 @@ impl VM {
             list_count
         );
         self.validate_slot(element_slot);
+        // SAFETY: We verified that `list_slot` exists and contains a `List`, `element_slot`
+        // exists and `index` is valid.
         unsafe { self.insert_in_list_unchecked(list_slot, index, element_slot) }
     }
 
@@ -645,6 +664,7 @@ impl VM {
     #[inline]
     pub fn get_map_count(&self, slot: usize) -> usize {
         self.validate_slot_type(slot, Type::Map);
+        // SAFETY: We verified that `slot` exists and contains a `Map`.
         unsafe { self.get_map_count_unchecked(slot) }
     }
 
@@ -812,6 +832,7 @@ impl VM {
     #[inline]
     pub fn abort_fiber(&self, slot: usize) {
         self.validate_slot(slot);
+        // SAFETY: We verified that `slot` exists.
         unsafe { self.abort_fiber_unchecked(slot) }
     }
 }

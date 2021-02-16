@@ -134,14 +134,32 @@ static mut API: Api = Api {
 impl Api {
     #[inline]
     pub(crate) fn dome() -> &'static unsafe_dome::ApiV0 {
+        // SAFETY: The code should call `init_plugin()` before doing anything else,
+        // which initializes this pointer.
+        // Technically speaking, it is possible for this to be null if the user didn't
+        // call `init_plugin()`, but protecting against that would make user code
+        // awkward, and you'll get immediate crash because of dereferencing null pointer
+        // once you'll do something with this crate.
         unsafe { &*API.dome }
     }
     #[inline]
     pub(crate) fn wren() -> &'static unsafe_wren::ApiV0 {
+        // SAFETY: The code should call `init_plugin()` before doing anything else,
+        // which initializes this pointer.
+        // Technically speaking, it is possible for this to be null if the user didn't
+        // call `init_plugin()`, but protecting against that would make user code
+        // awkward, and you'll get immediate crash because of dereferencing null pointer
+        // once you'll do something with this crate.
         unsafe { &*API.wren }
     }
     #[inline]
     pub(crate) fn audio() -> &'static unsafe_audio::ApiV0 {
+        // SAFETY: The code should call `init_plugin()` before doing anything else,
+        // which initializes this pointer.
+        // Technically speaking, it is possible for this to be null if the user didn't
+        // call `init_plugin()`, but protecting against that would make user code
+        // awkward, and you'll get immediate crash because of dereferencing null pointer
+        // once you'll do something with this crate.
         unsafe { &*API.audio }
     }
 }
@@ -210,29 +228,59 @@ pub unsafe fn init_plugin(get_api: *mut c_void, ctx: *mut c_void, hooks: Hooks) 
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn PLUGIN_preUpdate(ctx: unsafe_dome::Context) -> DomeResult {
+    // SAFETY: The code should call `init_plugin()` before doing anything else,
+    // which initializes this pointer.
+    // Technically speaking, it is possible for this to be null if the user didn't
+    // call `init_plugin()`, but protecting against that would make user code
+    // awkward, and you'll get immediate crash because of dereferencing null pointer
+    // once you'll do something with this crate.
     invoke_hook(ctx, unsafe { HOOKS.pre_update })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn PLUGIN_postUpdate(ctx: unsafe_dome::Context) -> DomeResult {
+    // SAFETY: The code should call `init_plugin()` before doing anything else,
+    // which initializes this pointer.
+    // Technically speaking, it is possible for this to be null if the user didn't
+    // call `init_plugin()`, but protecting against that would make user code
+    // awkward, and you'll get immediate crash because of dereferencing null pointer
+    // once you'll do something with this crate.
     invoke_hook(ctx, unsafe { HOOKS.post_update })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn PLUGIN_preDraw(ctx: unsafe_dome::Context) -> DomeResult {
+    // SAFETY: The code should call `init_plugin()` before doing anything else,
+    // which initializes this pointer.
+    // Technically speaking, it is possible for this to be null if the user didn't
+    // call `init_plugin()`, but protecting against that would make user code
+    // awkward, and you'll get immediate crash because of dereferencing null pointer
+    // once you'll do something with this crate.
     invoke_hook(ctx, unsafe { HOOKS.pre_draw })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn PLUGIN_postDraw(ctx: unsafe_dome::Context) -> DomeResult {
+    // SAFETY: The code should call `init_plugin()` before doing anything else,
+    // which initializes this pointer.
+    // Technically speaking, it is possible for this to be null if the user didn't
+    // call `init_plugin()`, but protecting against that would make user code
+    // awkward, and you'll get immediate crash because of dereferencing null pointer
+    // once you'll do something with this crate.
     invoke_hook(ctx, unsafe { HOOKS.post_draw })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 extern "C" fn PLUGIN_onShutdown(ctx: unsafe_dome::Context) -> DomeResult {
+    // SAFETY: The code should call `init_plugin()` before doing anything else,
+    // which initializes this pointer.
+    // Technically speaking, it is possible for this to be null if the user didn't
+    // call `init_plugin()`, but protecting against that would make user code
+    // awkward, and you'll get immediate crash because of dereferencing null pointer
+    // once you'll do something with this crate.
     invoke_hook(ctx, unsafe { HOOKS.on_shutdown })
 }

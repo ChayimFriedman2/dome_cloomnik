@@ -37,10 +37,16 @@ impl<T: Send + Sync> ChannelData<T> {
     pub(crate) fn new(mix: ChannelMix<T>, update: ChannelUpdate<T>, user_data: T) -> Self {
         Self {
             internal_data: InternalChannelData {
+                // SAFETY: `Channel<T>` is `repr(transparent)` over `ChannelRef`,
+                // and so the ABI matches.
                 mix: unsafe { mem::transmute(mix) },
                 update: unsafe { mem::transmute(update) },
                 mix_error: Mutex::new(None),
 
+                // SAFETY: `ChannelData<T>` is `repr(C)` and its first member is
+                // `InternalChannelData` (which guarantees it to be at offset 0),
+                // And so passing a pointer to `InternalChannelData` to a function
+                // that takes `ChannelData<T>` is valid.
                 drop_fn: unsafe { mem::transmute::<unsafe fn(_), _>(ptr::drop_in_place::<Self>) },
                 layout: Layout::new::<Self>(),
             },
@@ -59,11 +65,15 @@ pub(crate) extern "C" fn mix(
     buffer: *mut c_float,
     requested_samples: size_t,
 ) {
+    // SAFETY: If we're here `finish()` wasn't called, and so the user data is valid.
     let internal_data = unsafe { &mut *get_internal_data(channel_ref) };
     let callback = internal_data.mix;
     let error = catch_panic(|| {
         let requested_samples = requested_samples.try_into().unwrap();
         let buffer = buffer as *mut [c_float; 2];
+        // SAFETY: DOME guarantees a zeroes buffer of size `2 * requested_samples`.
+        // Array layout is sequence of elements, so `&mut [f32]` of `2 * size`
+        // can be transmuted into `&mut [[f32; 2]]` of `size`.
         let buffer = unsafe { slice::from_raw_parts_mut(buffer, requested_samples) };
         callback(&channel_ref, buffer, requested_samples)
     });
@@ -86,6 +96,7 @@ fn handle_mix_error(vm: unsafe_wren::VM, mix_error: &Mutex<Option<CString>>) {
 }
 
 pub(crate) extern "C" fn update(channel_ref: unsafe_audio::ChannelRef, vm: unsafe_wren::VM) {
+    // SAFETY: If we're here `finish()` wasn't called, and so the user data is valid.
     let internal_data = unsafe { &mut *get_internal_data(channel_ref) };
 
     handle_mix_error(vm, &internal_data.mix_error);
@@ -101,16 +112,23 @@ pub(crate) extern "C" fn update(channel_ref: unsafe_audio::ChannelRef, vm: unsaf
 pub(crate) extern "C" fn finish(channel_ref: unsafe_audio::ChannelRef, vm: unsafe_wren::VM) {
     let internal_data = get_internal_data(channel_ref);
 
+    // SAFETY: We didn't free the memory yet, and `finish()` is guaranteed to be called
+    // at most once.
     handle_mix_error(vm, unsafe { &(*internal_data).mix_error });
 
     // Cache the layout before we run the destructor
+    // SAFETY: We didn't free the memory yet, and `finish()` is guaranteed to be called
+    // at most once.
     let layout = unsafe { (*internal_data).layout };
     // Catch destructor's panics
+    // SAFETY: We know the memory is valid as required by `drop_in_place()` - we allocated
+    // it using `Box`.
     let error = catch_panic(|| unsafe { ((*internal_data).drop_fn)(internal_data) });
     if let Err(error) = error {
         handle_wren_callback_panic(&wren::VM(vm), &error);
         return;
     }
+    // SAFETY: The memory was allocated via `Box`.
     unsafe {
         alloc::dealloc(internal_data as _, layout);
     }
@@ -122,8 +140,11 @@ pub(crate) extern "C" fn finish_no_drop(
 ) {
     let internal_data = get_internal_data(channel_ref);
 
+    // SAFETY: We didn't free the memory yet, and `finish()` is guaranteed to be called
+    // at most once.
     handle_mix_error(vm, unsafe { &(*internal_data).mix_error });
 
+    // SAFETY: The memory was allocated via `Box`.
     unsafe {
         alloc::dealloc(internal_data as _, (*internal_data).layout);
     }
@@ -148,6 +169,7 @@ pub struct Channel<T: Send + Sync = ()>(
     pub(crate) PhantomData<UnsafeCell<T>>,
 );
 
+// SAFETY: We use `RwLock` to access the mutable user data.
 unsafe impl Send for Channel {}
 unsafe impl Sync for Channel {}
 
@@ -176,6 +198,8 @@ impl<T: Send + Sync> Channel<T> {
         }
 
         let data = (Api::audio().get_data)(self.0) as *mut ChannelData<T>;
+        // SAFETY: We just validated that the channel wasn't stopped, and so `finish()`
+        // wasn't called and the memory wasn't dropped.
         Some(unsafe { &(*data).user_data })
     }
     /// Gets the user data associated with this channel, for read only.
@@ -229,9 +253,9 @@ impl<T: Send + Sync> CallbackChannel<T> {
 
     #[inline]
     fn user_data(&self) -> &RwLock<T> {
-        // It is valid to assume the channel has not been stopped because channels
-        // are not stopped while their callbacks are still executing
         let data = (Api::audio().get_data)(self.0 .0) as *mut ChannelData<T>;
+        // SAFETY: We are inside channel callback (`mix` or `update`) and DOME does not call
+        // them after `finish()`.
         unsafe { &(*data).user_data }
     }
     /// Gets the user data associated with this channel, for read only.
