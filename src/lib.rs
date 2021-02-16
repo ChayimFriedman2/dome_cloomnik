@@ -25,7 +25,7 @@
 //!
 //! #[no_mangle]
 //! #[allow(non_snake_case)]
-//! extern "C" fn PLUGIN_onInit(get_api: *mut libc::c_void, ctx: *mut libc::c_void) => libc::c_int {
+//! extern "C" fn PLUGIN_onInit(get_api: *mut libc::c_void, ctx: *mut libc::c_void) -> libc::c_int {
 //!     unsafe {
 //!         dome_cloomnik::init_plugin(
 //!             get_api,
@@ -38,7 +38,7 @@
 //!                 post_draw: Some(post_draw),
 //!                 on_shutdown: Some(on_shutdown),
 //!             }
-//!         );
+//!         )
 //!     }
 //! }
 //!
