@@ -1,6 +1,7 @@
 use libc::{c_char, c_int, c_void};
 use std::any::TypeId;
 use std::convert::TryInto;
+use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
 use std::slice;
@@ -44,7 +45,7 @@ impl VM {
     /// Retrieve a [`Context`] from this [`VM`].
     #[inline]
     pub fn get_context(&self) -> dome::Context {
-        dome::Context((Api::dome().get_context)(self.0))
+        dome::Context((Api::dome().get_context)(self.0), PhantomData)
     }
 
     /// Ensure that there are _at least_ `slot_count` slots.

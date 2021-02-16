@@ -42,7 +42,7 @@
 //!     }
 //! }
 //!
-//! fn on_init(ctx: &Context) -> Result<(), ()> {
+//! fn on_init(ctx: Context) -> Result<(), ()> {
 //!     register_modules! {
 //!         ctx,
 //!         ...
@@ -51,23 +51,23 @@
 //!     // ...
 //! }
 //!
-//! fn pre_update(ctx: &Context) -> Result<(), ()> {
+//! fn pre_update(ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn post_update(ctx: &Context) -> Result<(), ()> {
+//! fn post_update(ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn pre_draw(ctx: &Context) -> Result<(), ()> {
+//! fn pre_draw(ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn post_draw(ctx: &Context) -> Result<(), ()> {
+//! fn post_draw(ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //!
-//! fn on_shutdown(ctx: &Context) -> Result<(), ()> {
+//! fn on_shutdown(ctx: Context) -> Result<(), ()> {
 //!     // ...
 //! }
 //! ```
@@ -81,6 +81,7 @@ mod unsafe_wrappers;
 
 use libc::{c_int, c_void};
 use std::convert;
+use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
 
@@ -146,7 +147,7 @@ impl Api {
 }
 
 /// DOME plugin hook.
-pub type Hook = fn(&Context) -> Result<(), ()>;
+pub type Hook = fn(Context) -> Result<(), ()>;
 #[derive(Clone, Copy)]
 /// A struct containing all plugin hooks. All hooks are optional.
 pub struct Hooks {
@@ -169,7 +170,7 @@ static mut HOOKS: Hooks = Hooks {
 #[inline]
 fn invoke_hook(ctx: unsafe_dome::Context, callback: Option<Hook>) -> DomeResult {
     callback.map_or(DomeResult::Success, |callback| {
-        catch_and_log_panic(ctx, || callback(&Context(ctx)))
+        catch_and_log_panic(ctx, || callback(Context(ctx, PhantomData)))
             .and_then(convert::identity) // TODO: Replace with `.flatten()` once stabilized
             .into()
     })

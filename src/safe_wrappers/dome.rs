@@ -22,9 +22,12 @@ pub(crate) type FinalizerFn = wren::FinalizerFn;
 /// and this is enforced by Rust's ownership system.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Context(pub(crate) unsafe_dome::Context);
+pub struct Context<'a>(
+    pub(crate) unsafe_dome::Context,
+    pub(crate) PhantomData<&'a ()>,
+);
 
-impl Context {
+impl Context<'_> {
     /// Register a Wren module that Wren code can import and use the functionalities
     /// it provides.
     ///

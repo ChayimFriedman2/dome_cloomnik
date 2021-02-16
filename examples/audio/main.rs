@@ -397,7 +397,7 @@ impl SynthClass {
     }
 }
 
-fn on_init(ctx: &Context) -> Result<(), ()> {
+fn on_init(ctx: Context) -> Result<(), ()> {
     ctx.log("init hook triggered\n");
 
     register_modules! {
