@@ -237,18 +237,18 @@ impl Context<'_> {
 /// ```rust
 /// struct MyType;
 /// impl MyType {
-///     fn new(vm: &wren::VM) -> Self {
+///     fn new(_vm: &WrenVM) -> Self {
 ///         MyType
 ///     }
-///     fn foreign_subscript_setter(vm: &wren::VM) {}
+///     fn foreign_subscript_setter(_vm: &WrenVM) {}
 /// }
 /// #[derive(Debug)]
 /// struct MyOtherType(f64);
 /// impl MyOtherType {
-///     fn construct(vm: &wren::VM) -> Self {
+///     fn construct(vm: &WrenVM) -> Self {
 ///         MyOtherType(vm.get_slot_double(1))
 ///     }
-///     fn foreign_method(&mut self, vm: &wren::VM) {}
+///     fn foreign_method(&mut self, _vm: &WrenVM) {}
 /// }
 /// impl Drop for MyOtherType {
 ///     fn drop(&mut self) {
@@ -258,7 +258,7 @@ impl Context<'_> {
 /// mod non_foreign {
 ///     pub(super) struct SomeOtherClass;
 ///     impl SomeOtherClass {
-///         pub(super) fn foreign_getter(vm: &crate::WrenVM) {}
+///         pub(super) fn foreign_getter(vm: &WrenVM) {}
 ///     }
 /// }
 /// register_modules! {
@@ -291,8 +291,16 @@ impl Context<'_> {
 /// ```
 #[macro_export]
 macro_rules! register_modules {
+    { $ctx:expr, $($modules:tt)+ } => {
+        $crate::__register_modules_impl! { $ctx, $($modules)+ }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __register_modules_impl {
     { $ctx:expr, $($modules:tt)+ } => {{
-        $crate::register_modules! { @process_modules
+        $crate::__register_modules_impl! { @process_modules
             ctx = [{ $ctx }]
             modules = [{ $($modules)+ }]
         }
@@ -307,12 +315,12 @@ macro_rules! register_modules {
         $(
             $ctx.register_module(
                 $module_name,
-                $crate::register_modules! { @get_module_source
+                $crate::__register_modules_impl! { @get_module_source
                     items = [{ $($module_contents)* }]
                 }
             ).unwrap();
 
-            $crate::register_modules! { @register_module_members
+            $crate::__register_modules_impl! { @register_module_members
                 ctx = [{ $ctx }]
                 module = [{ $module_name }]
                 items = [{ $($module_contents)* }]
@@ -335,11 +343,11 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign class ", stringify!($name), $(" is (", $superclass, ")",)? " {\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($class_contents)* }]
             },
             "}\n",
-            $crate::register_modules! { @get_module_source
+            $crate::__register_modules_impl! { @get_module_source
                 items = [{ $($rest)* }]
             },
         )
@@ -352,11 +360,11 @@ macro_rules! register_modules {
     } => {
         concat!(
             "class ", stringify!($name), $(" is (", $superclass, ")",)? " {\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($class_contents)* }]
             },
             "}\n",
-            $crate::register_modules! { @get_module_source
+            $crate::__register_modules_impl! { @get_module_source
                 items = [{ $($rest)* }]
             },
         )
@@ -374,7 +382,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign static ", stringify!($name), "\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -388,7 +396,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign ", stringify!($name), "\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -402,7 +410,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign static ", stringify!($name), "=(", stringify!($value), ")\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -416,7 +424,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign ", stringify!($name), "=(", stringify!($value), ")\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -432,7 +440,7 @@ macro_rules! register_modules {
             "foreign static ", stringify!($name), "(",
                 $(stringify!($param0), $(",", stringify!($params),)*)?
             ")\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -448,7 +456,7 @@ macro_rules! register_modules {
             "foreign ", stringify!($name), "(",
                 $(stringify!($param0), $(",", stringify!($params),)*)?
             ")\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -462,7 +470,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign static [", stringify!($param0), $(",", stringify!($params),)* "]\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -476,7 +484,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             "foreign [", stringify!($param0), $(",", stringify!($params),)* "]\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -492,7 +500,7 @@ macro_rules! register_modules {
             "foreign static [",
                 stringify!($param0), $(",", stringify!($params),)*
             "]=(", stringify!($value), ")\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -508,7 +516,7 @@ macro_rules! register_modules {
             "foreign [",
                 stringify!($param0), $(",", stringify!($params),)*
             "]=(", stringify!($value), ")\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -522,7 +530,7 @@ macro_rules! register_modules {
     } => {
         concat!(
             $method, "\n",
-            $crate::register_modules! { @get_class_source
+            $crate::__register_modules_impl! { @get_class_source
                 items = [{ $($rest)* }]
             },
         )
@@ -571,7 +579,7 @@ macro_rules! register_modules {
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $name }]
@@ -579,7 +587,7 @@ macro_rules! register_modules {
             type = [{ $foreign_type }]
             foreign_type = [{ $foreign_type }]
         }
-        $crate::register_modules! { @register_module_members
+        $crate::__register_modules_impl! { @register_module_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             items = [{ $($rest)* }]
@@ -593,14 +601,14 @@ macro_rules! register_modules {
             $($rest:tt)*
         }]
     } => {
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $name }]
             items = [{ $($class_contents)* }]
             type = [{ $type }]
         }
-        $crate::register_modules! { @register_module_members
+        $crate::__register_modules_impl! { @register_module_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             items = [{ $($rest)* }]
@@ -642,7 +650,7 @@ macro_rules! register_modules {
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -679,7 +687,7 @@ macro_rules! register_modules {
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -711,7 +719,7 @@ macro_rules! register_modules {
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -748,7 +756,7 @@ macro_rules! register_modules {
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -777,15 +785,15 @@ macro_rules! register_modules {
                 $module,
                 concat!("static ", stringify!($class), ".", stringify!($name), "(",
                     $(
-                        $crate::register_modules! { @underscore $param0 },
-                        $(",", $crate::register_modules! { @underscore $params },)*
+                        $crate::__register_modules_impl! { @underscore $param0 },
+                        $(",", $crate::__register_modules_impl! { @underscore $params },)*
                     )?
                 ")"),
                 __dome_cloomnik_method,
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -819,15 +827,15 @@ macro_rules! register_modules {
                 $module,
                 concat!(stringify!($class), ".", stringify!($name), "(",
                     $(
-                        $crate::register_modules! { @underscore $param0 },
-                        $(",", $crate::register_modules! { @underscore $params },)*
+                        $crate::__register_modules_impl! { @underscore $param0 },
+                        $(",", $crate::__register_modules_impl! { @underscore $params },)*
                     )?
                 ")"),
                 __dome_cloomnik_method,
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -855,14 +863,14 @@ macro_rules! register_modules {
             $ctx.register_fn(
                 $module,
                 concat!("static ", stringify!($class), ".[",
-                    $crate::register_modules! { @underscore $param0 },
-                    $(",", $crate::register_modules! { @underscore $params },)*
+                    $crate::__register_modules_impl! { @underscore $param0 },
+                    $(",", $crate::__register_modules_impl! { @underscore $params },)*
                 "]"),
                 __dome_cloomnik_method,
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -895,14 +903,14 @@ macro_rules! register_modules {
             $ctx.register_fn(
                 $module,
                 concat!(stringify!($class), ".[",
-                    $crate::register_modules! { @underscore $param0 },
-                    $(",", $crate::register_modules! { @underscore $params },)*
+                    $crate::__register_modules_impl! { @underscore $param0 },
+                    $(",", $crate::__register_modules_impl! { @underscore $params },)*
                 "]"),
                 __dome_cloomnik_method,
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -930,14 +938,14 @@ macro_rules! register_modules {
             $ctx.register_fn(
                 $module,
                 concat!("static ", stringify!($class), ".[",
-                    $crate::register_modules! { @underscore $param0 },
-                    $(",", $crate::register_modules! { @underscore $params },)*
+                    $crate::__register_modules_impl! { @underscore $param0 },
+                    $(",", $crate::__register_modules_impl! { @underscore $params },)*
                 "]=(_)"),
                 __dome_cloomnik_method,
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -970,14 +978,14 @@ macro_rules! register_modules {
             $ctx.register_fn(
                 $module,
                 concat!(stringify!($class), ".[",
-                    $crate::register_modules! { @underscore $param0 },
-                    $(",", $crate::register_modules! { @underscore $params },)*
+                    $crate::__register_modules_impl! { @underscore $param0 },
+                    $(",", $crate::__register_modules_impl! { @underscore $params },)*
                 "]=(_)"),
                 __dome_cloomnik_method,
             )
         }
         .unwrap();
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
@@ -998,7 +1006,7 @@ macro_rules! register_modules {
         type = [{ $($type:tt)+ }]
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
     } => {
-        $crate::register_modules! { @register_class_members
+        $crate::__register_modules_impl! { @register_class_members
             ctx = [{ $ctx }]
             module = [{ $module }]
             class = [{ $class }]
