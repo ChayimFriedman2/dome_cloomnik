@@ -318,7 +318,8 @@ macro_rules! __register_modules_impl {
                 $crate::__register_modules_impl! { @get_module_source
                     items = [{ $($module_contents)* }]
                 }
-            ).unwrap();
+            )
+            .unwrap();
 
             $crate::__register_modules_impl! { @register_module_members
                 ctx = [{ $ctx }]
