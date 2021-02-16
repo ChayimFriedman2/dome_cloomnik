@@ -52,9 +52,9 @@ impl Context {
     /// ```wren
     /// [static ]ClassName.wrenSignature
     /// ```
-    /// For more information about DOME signatures, see [DOME docs][https://domeengine.com/plugins/#method-registerfn].
+    /// For more information about DOME signatures, see [DOME docs](https://domeengine.com/plugins/#method-registerfn).
     ///
-    /// For more information about Wren signatures, see [Wren docs][https://wren.io/method-calls.html#signature].
+    /// For more information about Wren signatures, see [Wren docs](https://wren.io/method-calls.html#signature).
     ///
     /// Fails if the same method is already registered.
     ///
@@ -173,11 +173,11 @@ impl Context {
     ///
     /// `update`: A callback to be called in the free time.
     ///
-    /// `user_data`: The user data. Can be retrieved later using [`Channel::data()`]
-    /// and [`Channel::data_mut()`] (and counterparts in [`ChannelCallback`]).
+    /// `user_data`: The user data. Can be retrieved later using [`Channel::data()`][crate::Channel]
+    /// and [`Channel::data_mut()`] (and counterparts in [`CallbackChannel`][crate::CallbackChannel]).
     ///
     /// The user data must be safe to transfer and share across threads, because `mix`
-    /// is executed on another thread. If you don't need data, you can just use [the unit type][https://doc.rust-lang.org/std/primitive.unit.html].
+    /// is executed on another thread. If you don't need data, you can just use [the unit type](https://doc.rust-lang.org/std/primitive.unit.html).
     ///
     /// The returned channel is automatically stopped on drop. Use [`mem::forget()`] if that
     /// isn't the intention.

@@ -253,13 +253,13 @@ impl<T: Send + Sync> CallbackChannel<T> {
 }
 
 /// The `mix` callback of channel. It is responsible to fill `buffer`.
-/// See [DOME's documentation][https://domeengine.com/plugins/#audio] for more details.
+/// See [DOME's documentation](https://domeengine.com/plugins/#audio) for more details.
 ///
 /// It takes a reference to, and not a copy of, `CallbackChannel`, because we
 /// don't want it to drop the channel at the end, which will stop it.
 pub type ChannelMix<T = ()> = fn(channel: &CallbackChannel<T>, buffer: &mut [[f32; 2]]);
 /// The `update` callback of channel. It is called between frames.
-/// See [DOME's documentation][https://domeengine.com/plugins/#audio] for more details.
+/// See [DOME's documentation](https://domeengine.com/plugins/#audio) for more details.
 ///
 /// It takes a reference to, and not a copy of, `CallbackChannel`, because we
 /// don't want it to drop the channel at the end, which will stop it.

@@ -49,7 +49,7 @@ impl VM {
 
     /// Ensure that there are _at least_ `slot_count` slots.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn ensure_slots(&self, slot_count: usize) {
         (Api::wren().ensure_slots)(self.0, slot_count.try_into().unwrap())
@@ -57,7 +57,7 @@ impl VM {
 
     /// Returns the number of available slots.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_count(&self) -> usize {
         (Api::wren().get_slot_count)(self.0).try_into().unwrap()
@@ -76,7 +76,7 @@ impl VM {
 
     /// Returns the type of the object is `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -87,7 +87,7 @@ impl VM {
     }
     /// Returns the type of the object is `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_type(&self, slot: usize) -> Type {
         self.validate_slot(slot);
@@ -108,7 +108,7 @@ impl VM {
 
     /// Sets `slot` to `null`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -119,7 +119,7 @@ impl VM {
     }
     /// Sets `slot` to `null`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_null(&self, slot: usize) {
         self.validate_slot(slot);
@@ -128,7 +128,7 @@ impl VM {
 
     /// Sets `slot` to a `Bool`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -139,7 +139,7 @@ impl VM {
     }
     /// Sets `slot` to a `Bool`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_bool(&self, slot: usize, value: bool) {
         self.validate_slot(slot);
@@ -148,7 +148,7 @@ impl VM {
 
     /// Sets `slot` to a `Num`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -159,7 +159,7 @@ impl VM {
     }
     /// Sets `slot` to a `Num`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_double(&self, slot: usize, value: f64) {
         self.validate_slot(slot);
@@ -168,7 +168,7 @@ impl VM {
 
     /// Sets `slot` to a `String` from Rust bytes slice.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -184,7 +184,7 @@ impl VM {
     }
     /// Sets `slot` to a `String` from Rust bytes slice.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_bytes(&self, slot: usize, data: &[u8]) {
         self.validate_slot(slot);
@@ -193,7 +193,7 @@ impl VM {
 
     /// Sets `slot` to a `String` from Rust `str`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -204,7 +204,7 @@ impl VM {
     }
     /// Sets `slot` to a `String` from Rust `str`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_string(&self, slot: usize, text: &str) {
         self.set_slot_bytes(slot, text.as_bytes())
@@ -212,7 +212,7 @@ impl VM {
 
     /// Sets `slot` to a new `List`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -223,7 +223,7 @@ impl VM {
     }
     /// Sets `slot` to a new `List`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_new_list(&self, slot: usize) {
         self.validate_slot(slot);
@@ -232,7 +232,7 @@ impl VM {
 
     /// Sets `slot` to a new `Map`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -243,7 +243,7 @@ impl VM {
     }
     /// Sets `slot` to a new `Map`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_slot_new_map(&self, slot: usize) {
         self.validate_slot(slot);
@@ -253,7 +253,7 @@ impl VM {
     /// Sets `slot` to a new foreign object, where the foreign class is stored in `class_slot`
     /// and the expected size (in bytes) is `length`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -289,7 +289,7 @@ impl VM {
     /// (it stores a [`TypeId`]), and also to work around the fact that Rust types are
     /// required to be properly aligned, but Wren does not provide alignment guarantees.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -315,7 +315,7 @@ impl VM {
 
     /// Gets `Bool` from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -326,7 +326,7 @@ impl VM {
     }
     /// Gets `Bool` from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_bool(&self, slot: usize) -> bool {
         self.validate_slot_type(slot, Type::Bool);
@@ -335,7 +335,7 @@ impl VM {
 
     /// Gets `Num` from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -346,7 +346,7 @@ impl VM {
     }
     /// Gets `Num` from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_double(&self, slot: usize) -> f64 {
         self.validate_slot_type(slot, Type::Num);
@@ -358,7 +358,7 @@ impl VM {
     /// This function copies the string and so it remains valid even after you give
     /// the control back to Wren.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -375,7 +375,7 @@ impl VM {
     /// This function copies the string and so it remains valid even after you give
     /// the control back to Wren.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_bytes(&self, slot: usize) -> Vec<u8> {
         self.validate_slot_type(slot, Type::String);
@@ -392,7 +392,7 @@ impl VM {
     /// This function copies the string and so it remains valid even after you give
     /// the control back to Wren.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -417,7 +417,7 @@ impl VM {
     /// This function copies the string and so it remains valid even after you give
     /// the control back to Wren.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_string(&self, slot: usize) -> std::result::Result<String, str::Utf8Error> {
         self.validate_slot_type(slot, Type::String);
@@ -426,7 +426,7 @@ impl VM {
 
     /// Gets a foreign object from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -438,7 +438,7 @@ impl VM {
     }
     /// Gets a foreign object from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_slot_raw_foreign(&self, slot: usize) -> *mut c_void {
         self.validate_slot_type(slot, Type::Foreign);
@@ -446,7 +446,7 @@ impl VM {
     }
     /// Gets a Rust foreign object from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -460,7 +460,7 @@ impl VM {
     }
     /// Gets a Rust foreign object from `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -487,7 +487,7 @@ impl VM {
 
     /// Retrieves the list length from the list object at `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -500,7 +500,7 @@ impl VM {
     }
     /// Retrieves the list length from the list object at `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_list_count(&self, slot: usize) -> usize {
         self.validate_slot_type(slot, Type::List);
@@ -521,7 +521,7 @@ impl VM {
 
     /// Retrieves the index-th list element from the list object at `list_slot` into `element_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -543,7 +543,7 @@ impl VM {
     }
     /// Retrieves the index-th list element from the list object at `list_slot` into `element_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_list_element(&self, list_slot: usize, index: usize, element_slot: usize) {
         self.validate_list_element(list_slot, index);
@@ -553,7 +553,7 @@ impl VM {
 
     /// Sets the index-th list element from the list object at `list_slot` to `element_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -575,7 +575,7 @@ impl VM {
     }
     /// Sets the index-th list element from the list object at `list_slot` to `element_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn set_list_element(&self, list_slot: usize, index: usize, element_slot: usize) {
         self.validate_list_element(list_slot, index);
@@ -585,7 +585,7 @@ impl VM {
 
     /// Inserts the item at `element_slot` to the list at `slot` at `index`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -607,7 +607,7 @@ impl VM {
     }
     /// Inserts the item at `element_slot` to the list at `list_slot` at `index`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn insert_in_list(&self, list_slot: usize, index: usize, element_slot: usize) {
         // We don't use `validate_list_element()` because insert allows one past the end
@@ -627,7 +627,7 @@ impl VM {
 
     /// Gets the number of elements in the `Map` at `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -640,7 +640,7 @@ impl VM {
     }
     /// Gets the number of elements in the `Map` at `slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
     pub fn get_map_count(&self, slot: usize) -> usize {
         self.validate_slot_type(slot, Type::Map);
@@ -649,7 +649,7 @@ impl VM {
 
     /// Inserts the value with the key at `key_slot` in the `Map` at `map_slot` into `value_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -672,7 +672,7 @@ impl VM {
     }
     /// Inserts the value with the key at `key_slot` in the `Map` at `map_slot` into `value_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -687,7 +687,7 @@ impl VM {
 
     /// Sets the value with the key at `key_slot` in the `Map` at `map_slot` to `value_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -710,7 +710,7 @@ impl VM {
     }
     /// Sets the value with the key at `key_slot` in the `Map` at `map_slot` to `value_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -725,7 +725,7 @@ impl VM {
 
     /// Returns `true` if the `Map` at `map_slot` contains `key_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -741,7 +741,7 @@ impl VM {
     }
     /// Returns `true` if the `Map` at `map_slot` contains `key_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -756,7 +756,7 @@ impl VM {
     /// Removes the value with the key at `key_slot` in the `Map` at `map_slot` and stores
     /// the removed value at `value_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
@@ -780,7 +780,7 @@ impl VM {
     /// Removes the value with the key at `key_slot` in the `Map` at `map_slot` and stores
     /// the removed value at `value_slot`.
     ///
-    /// See [Wren docs][https://wren.io/embedding/slots-and-handles.html] for more.
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     ///
     /// # Safety
     ///
