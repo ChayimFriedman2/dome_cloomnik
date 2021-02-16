@@ -176,12 +176,12 @@ fn invoke_hook(ctx: unsafe_dome::Context, callback: Option<Hook>) -> DomeResult 
     })
 }
 
-/// This function must be called from the `PLUGIN_preUpdate()` function, with exactly
+/// This function must be called from the `PLUGIN_onInit()` function, with exactly
 /// the same arguments.
 ///
 /// # Safety
 ///
-/// As long as you pass the arguments of `PLUGIN_preUpdate()` exactly as-is, everything
+/// As long as you pass the arguments of `PLUGIN_onInit()` exactly as-is, everything
 /// is fine.
 ///
 /// If not, expect nasal demons!
