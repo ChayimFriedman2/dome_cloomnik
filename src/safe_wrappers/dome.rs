@@ -560,11 +560,10 @@ macro_rules! __register_modules_impl {
                 }
             }
         }
-        #[allow(unused)]
         extern "C" fn __dome_cloomnik_class_finalize(data: *mut $crate::__c_void) {
             let data = data as *mut $crate::__ForeignWrapper<$foreign_type>;
             // We cannot report the failure, but we still have to not panic
-            ::std::panic::catch_unwind(|| unsafe { ::std::ptr::drop_in_place(data) });
+            let _ = ::std::panic::catch_unwind(|| unsafe { ::std::ptr::drop_in_place(data) });
         }
         unsafe {
             $ctx.register_class(
