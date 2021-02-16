@@ -1,21 +1,16 @@
-use libc::c_char;
 use std::ffi::CString;
 use std::panic::{self, UnwindSafe};
 
-use crate::unsafe_dome::Context;
-use crate::API;
+use crate::safe_wrappers::wren::VM;
+use crate::unsafe_wrappers::dome::Context;
+use crate::Api;
 
 #[inline]
-pub(crate) fn catch_panic<R>(
-    ctx: Context,
-    callback: impl FnOnce() -> R + UnwindSafe,
-) -> Result<R, ()> {
+pub(crate) fn catch_panic<R>(callback: impl FnOnce() -> R + UnwindSafe) -> Result<R, CString> {
     let prev_panic_hook = panic::take_hook();
     panic::set_hook(Box::new(|_info| {}));
     let result = panic::catch_unwind(callback).map_err(|err| {
-        let fmt_owned = CString::new("Plugin panicked: %s\n").unwrap();
-        let fmt = fmt_owned.as_ptr() as *const c_char;
-        let panic_message_owned = if let Some(&s) = err.downcast_ref::<&str>() {
+        if let Some(&s) = err.downcast_ref::<&str>() {
             CString::new(s)
                 .unwrap_or_else(|_| CString::new("Panic message contains null byte(s).").unwrap())
         } else if let Some(s) = err.downcast_ref::<String>() {
@@ -23,12 +18,33 @@ pub(crate) fn catch_panic<R>(
                 .unwrap_or_else(|_| CString::new("Panic message contains null byte(s).").unwrap())
         } else {
             CString::new("Could not retrieve panic message.").unwrap()
-        };
-        let panic_message = panic_message_owned.as_ptr() as *const c_char;
-        unsafe {
-            ((*API.dome).log)(ctx, fmt, panic_message);
         }
     });
     panic::set_hook(prev_panic_hook);
     result
+}
+
+#[inline]
+pub(crate) fn log_panic(ctx: Context, panic_message: &CString) {
+    let fmt = CString::new("Plugin panicked: %s\n").unwrap();
+    unsafe {
+        (Api::dome().log)(ctx, fmt.as_ptr(), panic_message.as_ptr());
+    }
+}
+
+#[inline]
+pub(crate) fn handle_wren_callback_panic(vm: &VM, panic_message: &CString) {
+    log_panic(vm.get_context().0, panic_message);
+
+    vm.ensure_slots(2);
+    vm.set_slot_string(1, "Plugin panicked. See DOME's log for details.");
+    vm.abort_fiber(1);
+}
+
+#[inline]
+pub(crate) fn catch_and_log_panic<R>(
+    ctx: Context,
+    callback: impl FnOnce() -> R + UnwindSafe,
+) -> Result<R, ()> {
+    catch_panic(callback).map_err(|panic_message| log_panic(ctx, &panic_message))
 }

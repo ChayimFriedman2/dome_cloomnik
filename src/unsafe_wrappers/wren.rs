@@ -13,6 +13,7 @@ pub(crate) type VM = *mut FakeVM;
 pub(crate) type ForeignMethodFn = extern "C" fn(VM);
 pub(crate) type FinalizerFn = extern "C" fn(*mut c_void);
 
+/// A Wren type.
 #[derive(Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum Type {
@@ -29,6 +30,7 @@ pub enum Type {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub(crate) struct ApiV0 {
     pub(crate) ensure_slots: extern "C" fn(vm: VM, slot_count: c_int),
 
@@ -39,7 +41,7 @@ pub(crate) struct ApiV0 {
     pub(crate) set_slot_bytes:
         unsafe extern "C" fn(vm: VM, slot: c_int, data: *const c_char, length: size_t),
     pub(crate) set_slot_new_foreign:
-        unsafe extern "C" fn(vm: VM, slot: c_int, class_slot: c_int, length: size_t),
+        unsafe extern "C" fn(vm: VM, slot: c_int, class_slot: c_int, length: size_t) -> *mut c_void,
     pub(crate) set_slot_new_list: unsafe extern "C" fn(vm: VM, slot: c_int),
     pub(crate) set_slot_new_map: unsafe extern "C" fn(vm: VM, slot: c_int),
 

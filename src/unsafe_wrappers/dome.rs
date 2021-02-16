@@ -42,6 +42,7 @@ pub(crate) type ForeignFn = wren::ForeignMethodFn;
 pub(crate) type FinalizerFn = wren::FinalizerFn;
 
 #[repr(C)]
+#[derive(Debug)]
 pub(crate) struct ApiV0 {
     pub(crate) register_module:
         extern "C" fn(ctx: Context, name: *const c_char, source: *const c_char) -> Result,

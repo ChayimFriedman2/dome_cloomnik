@@ -1,2 +1,6 @@
 /target
 Cargo.lock
+DOME-out.log
+*.dll
+*.so
+*.dylib

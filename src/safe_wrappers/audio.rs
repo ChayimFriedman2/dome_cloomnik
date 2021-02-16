@@ -1,22 +1,57 @@
-use libc::{c_float, c_void, size_t};
+use libc::{c_float, size_t};
+use std::alloc::{self, Layout};
+use std::cell::UnsafeCell;
 use std::convert::TryInto;
+use std::ffi::CString;
 use std::marker::PhantomData;
 use std::mem;
+use std::ptr;
 use std::slice;
+use std::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::wren;
-use crate::panic::catch_panic;
+use crate::panic::{catch_panic, handle_wren_callback_panic};
 use crate::unsafe_wrappers::audio as unsafe_audio;
 use crate::unsafe_wrappers::wren as unsafe_wren;
-use crate::API;
+use crate::Api;
 pub use unsafe_audio::ChannelState;
 
+pub(crate) struct InternalChannelData {
+    mix: fn(&unsafe_audio::ChannelRef, &mut [[f32; 2]], usize),
+    update: Option<fn(&unsafe_audio::ChannelRef, &unsafe_wren::VM)>,
+    mix_error: Mutex<Option<CString>>,
+
+    drop_fn: unsafe fn(*mut InternalChannelData),
+    layout: Layout,
+}
+
+// This is repr(C) so that we can know that at offset 0 there is always
+// `InternalChannelData`.
 #[repr(C)]
-pub(crate) struct ChannelData {
-    pub(crate) mix: fn(unsafe_audio::ChannelRef, &mut [f32], usize),
-    pub(crate) update: Option<fn(unsafe_audio::ChannelRef, unsafe_wren::VM)>,
-    pub(crate) finish: Option<fn(unsafe_audio::ChannelRef, unsafe_wren::VM)>,
-    pub(crate) user_data: *mut c_void,
+pub(crate) struct ChannelData<T: Send + Sync> {
+    internal_data: InternalChannelData,
+    user_data: RwLock<T>,
+}
+
+impl<T: Send + Sync> ChannelData<T> {
+    pub(crate) fn new(mix: ChannelMix<T>, update: ChannelUpdate<T>, user_data: T) -> Self {
+        Self {
+            internal_data: InternalChannelData {
+                mix: unsafe { mem::transmute(mix) },
+                update: unsafe { mem::transmute(update) },
+                mix_error: Mutex::new(None),
+
+                drop_fn: unsafe { mem::transmute::<unsafe fn(_), _>(ptr::drop_in_place::<Self>) },
+                layout: Layout::new::<Self>(),
+            },
+            user_data: RwLock::new(user_data),
+        }
+    }
+}
+
+#[inline]
+fn get_internal_data(channel_ref: unsafe_audio::ChannelRef) -> *mut InternalChannelData {
+    (Api::audio().get_data)(channel_ref) as _
 }
 
 pub(crate) extern "C" fn mix(
@@ -24,83 +59,208 @@ pub(crate) extern "C" fn mix(
     buffer: *mut c_float,
     requested_samples: size_t,
 ) {
-    let data = (unsafe { (*API.audio).get_data })(channel_ref);
-    let data: &mut ChannelData = unsafe { mem::transmute(data) };
-    let requested_samples = requested_samples.try_into().unwrap();
-    let buffer = unsafe { slice::from_raw_parts_mut(buffer, requested_samples * 2) };
-    (data.mix)(channel_ref, buffer, requested_samples)
+    let internal_data = unsafe { &mut *get_internal_data(channel_ref) };
+    let callback = internal_data.mix;
+    let error = catch_panic(|| {
+        let requested_samples = requested_samples.try_into().unwrap();
+        let buffer = buffer as *mut [c_float; 2];
+        let buffer = unsafe { slice::from_raw_parts_mut(buffer, requested_samples) };
+        callback(&channel_ref, buffer, requested_samples)
+    });
+    if let Err(error) = error {
+        // OK to `.unwrap()` the mutex lock (even though panicking across FFI is undefined
+        // behavior) since the mutex locking can only fail if it is poisoned (a thread
+        // panicked while holding it), and we know we never panic while holding this mutex
+        internal_data.mix_error.lock().unwrap().replace(error);
+    }
 }
 
 #[inline]
-fn invoke_callback(
-    channel_ref: unsafe_audio::ChannelRef,
-    vm: unsafe_wren::VM,
-    callback: Option<fn(unsafe_audio::ChannelRef, unsafe_wren::VM)>,
-) {
-    callback.map(|callback| {
-        catch_panic((unsafe { (*API.dome).get_context })(vm), || {
-            callback(channel_ref, vm)
-        })
-        .map_err(|()| {
-            let vm = wren::VM(vm);
-            vm.ensure_slots(2);
-            vm.set_slot_string(1, "Plugin panicked. See DOME's log for details.");
-            vm.abort_fiber(1);
-        })
-    });
+fn handle_mix_error(vm: unsafe_wren::VM, mix_error: &Mutex<Option<CString>>) {
+    // OK to `.unwrap()` the mutex lock (even though panicking across FFI is undefined
+    // behavior) since the mutex locking can only fail if it is poisoned (a thread
+    // panicked while holding it), and we know we never panic while holding this mutex
+    if let Some(panic_message) = mix_error.lock().unwrap().take() {
+        handle_wren_callback_panic(&wren::VM(vm), &panic_message);
+    };
 }
 
 pub(crate) extern "C" fn update(channel_ref: unsafe_audio::ChannelRef, vm: unsafe_wren::VM) {
-    let data = (unsafe { (*API.audio).get_data })(channel_ref);
-    let data: &mut ChannelData = unsafe { mem::transmute(data) };
-    invoke_callback(channel_ref, vm, data.update);
+    let internal_data = unsafe { &mut *get_internal_data(channel_ref) };
+
+    handle_mix_error(vm, &internal_data.mix_error);
+
+    internal_data.update.map(|callback| {
+        let error = catch_panic(|| callback(&channel_ref, &vm));
+        if let Err(error) = error {
+            handle_wren_callback_panic(&wren::VM(vm), &error);
+        }
+    });
 }
 
 pub(crate) extern "C" fn finish(channel_ref: unsafe_audio::ChannelRef, vm: unsafe_wren::VM) {
-    let data = (unsafe { (*API.audio).get_data })(channel_ref);
-    let data: &mut ChannelData = unsafe { mem::transmute(data) };
-    invoke_callback(channel_ref, vm, data.finish);
+    let internal_data = get_internal_data(channel_ref);
+
+    handle_mix_error(vm, unsafe { &(*internal_data).mix_error });
+
+    // Cache the layout before we run the destructor
+    let layout = unsafe { (*internal_data).layout };
+    // Catch destructor's panics
+    let error = catch_panic(|| unsafe { ((*internal_data).drop_fn)(internal_data) });
+    if let Err(error) = error {
+        handle_wren_callback_panic(&wren::VM(vm), &error);
+        return;
+    }
+    unsafe {
+        alloc::dealloc(internal_data as _, layout);
+    }
+}
+
+pub(crate) extern "C" fn finish_no_drop(
+    channel_ref: unsafe_audio::ChannelRef,
+    vm: unsafe_wren::VM,
+) {
+    let internal_data = get_internal_data(channel_ref);
+
+    handle_mix_error(vm, unsafe { &(*internal_data).mix_error });
 
     unsafe {
-        Box::from_raw(data as *mut _);
+        alloc::dealloc(internal_data as _, (*internal_data).layout);
+    }
+}
+
+/// A DOME audio channel.
+///
+/// A channel provides various methods to handle it. Note that the
+/// main work in channels happen in their callbacks, and not in other
+/// code, but it's nice anyway. The main thing that you can do with
+/// a channel is to stop it (using the [`Channel::stop()`] method)
+/// but this can only be done when the channel is not shared.
+///
+/// Channels are thread-safe.
+///
+/// When a channel drops, it is automagically stopped. If this is not
+/// desired, use [`mem::forget()`][std::mem::forget] to not drop it.
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct Channel<T: Send + Sync = ()>(
+    pub(crate) unsafe_audio::ChannelRef,
+    pub(crate) PhantomData<UnsafeCell<T>>,
+);
+
+unsafe impl Send for Channel {}
+unsafe impl Sync for Channel {}
+
+impl<T: Send + Sync> Channel<T> {
+    /// Queries the state of this channel.
+    #[inline]
+    pub fn state(&self) -> ChannelState {
+        (Api::audio().get_state)(self.0)
+    }
+
+    /// Sets the state for this channel.
+    #[inline]
+    pub fn set_state(&mut self, state: ChannelState) {
+        (Api::audio().set_state)(self.0, state)
+    }
+
+    /// Stops the channel. This is not a magic: it just takes ownership of
+    /// the channel (see [`Channel`]).
+    #[inline]
+    pub fn stop(self) {}
+
+    #[inline]
+    fn user_data(&self) -> Option<&RwLock<T>> {
+        if let ChannelState::Stopped = self.state() {
+            return None;
+        }
+
+        let data = (Api::audio().get_data)(self.0) as *mut ChannelData<T>;
+        Some(unsafe { &(*data).user_data })
+    }
+    /// Gets the user data associated with this channel, for read only.
+    /// Channels are using [`RwLock`][std::sync::RwLock] to hold user data,
+    /// so you can have multiple read-only references but only one read-write
+    /// reference at a time.
+    #[inline]
+    pub fn data(&self) -> Option<RwLockReadGuard<T>> {
+        Some(self.user_data()?.read().unwrap())
+    }
+    /// Gets the user data associated with this channel, for read and write.
+    /// Channels are using [`RwLock`][std::sync::RwLock] to hold user data,
+    /// so you can have multiple read-only references but only one read-write
+    /// reference at a time.
+    #[inline]
+    pub fn data_mut(&self) -> Option<RwLockWriteGuard<T>> {
+        Some(self.user_data()?.write().unwrap())
+    }
+}
+
+impl<T: Send + Sync> Drop for Channel<T> {
+    #[inline]
+    fn drop(&mut self) {
+        (Api::audio().stop)(self.0);
     }
 }
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Channel<'a, T: 'a = ()>(
-    pub(crate) unsafe_audio::ChannelRef,
-    pub(crate) PhantomData<&'a mut T>,
-);
+/// A DOME audio channel, as passed to the channel callbacks (`mix` and `update`).
+pub struct CallbackChannel<T: Send + Sync>(Channel<T>);
 
-impl<'a, T> Channel<'a, T> {
+impl<T: Send + Sync> CallbackChannel<T> {
+    /// Queries the state of this channel.
     #[inline]
     pub fn state(&self) -> ChannelState {
-        (unsafe { (*API.audio).get_state })(self.0)
+        self.0.state()
     }
+
+    /// Sets the state for this channel.
     #[inline]
     pub fn set_state(&mut self, state: ChannelState) {
-        (unsafe { (*API.audio).set_state })(self.0, state)
+        self.0.set_state(state)
     }
+
+    /// Stops the channel. This is equivalent to `self.set_state(ChannelState::Stopped)`.
     #[inline]
     pub fn stop(&mut self) {
-        (unsafe { (*API.audio).stop })(self.0)
+        self.set_state(ChannelState::Stopped);
     }
+
     #[inline]
-    pub fn data(&self) -> &'a mut T {
-        let data = (unsafe { (*API.audio).get_data })(self.0);
-        let data: &mut ChannelData = unsafe { mem::transmute(data) };
-        unsafe { mem::transmute(data.user_data) }
+    fn user_data(&self) -> &RwLock<T> {
+        // It is valid to assume the channel has not been stopped because channels
+        // are not stopped while their callbacks are still executing
+        let data = (Api::audio().get_data)(self.0 .0) as *mut ChannelData<T>;
+        unsafe { &(*data).user_data }
+    }
+    /// Gets the user data associated with this channel, for read only.
+    /// Channels are using [`RwLock`][std::sync::RwLock] to hold user data,
+    /// so you can have multiple read-only references but only one read-write
+    /// reference at a time.
+    #[inline]
+    pub fn data(&self) -> RwLockReadGuard<T> {
+        self.user_data().read().unwrap()
+    }
+    /// Gets the user data associated with this channel, for read and write.
+    /// Channels are using [`RwLock`][std::sync::RwLock] to hold user data,
+    /// so you can have multiple read-only references but only one read-write
+    /// reference at a time.
+    #[inline]
+    pub fn data_mut(&self) -> RwLockWriteGuard<T> {
+        self.user_data().write().unwrap()
     }
 }
 
-impl<T> Drop for Channel<'_, T> {
-    #[inline]
-    fn drop(&mut self) {
-        self.stop();
-    }
-}
-
-pub type ChannelMix<'a, T = ()> =
-    fn(channel: Channel<'a, T>, buffer: &mut [f32], requested_samples: usize);
-pub type ChannelCallback<'a, T = ()> = fn(channel: Channel<'a, T>, vm: wren::VM);
+/// The `mix` callback of channel. It is responsible to fill `buffer`.
+/// See [DOME's documentation][https://domeengine.com/plugins/#audio] for more details.
+///
+/// It takes a reference to, and not a copy of, `CallbackChannel`, because we
+/// don't want it to drop the channel at the end, which will stop it.
+pub type ChannelMix<T = ()> = fn(channel: &CallbackChannel<T>, buffer: &mut [[f32; 2]]);
+/// The `update` callback of channel. It is called between frames.
+/// See [DOME's documentation][https://domeengine.com/plugins/#audio] for more details.
+///
+/// It takes a reference to, and not a copy of, `CallbackChannel`, because we
+/// don't want it to drop the channel at the end, which will stop it.
+pub type ChannelUpdate<T = ()> = fn(channel: &CallbackChannel<T>, vm: &wren::VM);

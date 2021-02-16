@@ -16,10 +16,11 @@ pub(crate) type Engine = *mut FakeEngine;
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ChannelRef {
-    pub(crate) id: ChannelId,
-    pub(crate) engine: Engine,
+    id: ChannelId,
+    engine: Engine,
 }
 
+/// The state of a channel.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub enum ChannelState {
@@ -41,6 +42,7 @@ pub(crate) type ChannelMix =
 pub(crate) type ChannelCallback = extern "C" fn(channel_ref: ChannelRef, vm: wren::VM);
 
 #[repr(C)]
+#[derive(Debug)]
 pub(crate) struct ApiV0 {
     pub(crate) channel_create: extern "C" fn(
         ctx: dome::Context,
