@@ -76,5 +76,5 @@ fn on_shutdown(ctx: &Context) -> Result<(), ()> {
 }
 ```
 
-Go ahead, and start with [learning DOME plugins from the docs][https://domeengine.com/plugins/].
+Go ahead, and start with [learning DOME plugins from the docs](https://domeengine.com/plugins/).
 Don't worry, much of the things there will apply to doom_cloomnik too!
