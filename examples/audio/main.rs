@@ -236,44 +236,57 @@ fn synth_update(channel: &CallbackChannel<Synth>, _vm: &WrenVM) {
     }
 }
 
-static mut CHANNEL: Option<Channel<Synth>> = None;
-fn synth() -> std::sync::RwLockReadGuard<'static, Synth> {
-    use std::hint::unreachable_unchecked;
-    unsafe {
-        match CHANNEL {
-            Some(ref channel) => match channel.data() {
-                Some(data) => data,
-                None => unreachable_unchecked(),
-            },
-            None => unreachable_unchecked(),
-        }
-    }
-}
-fn synth_mut() -> std::sync::RwLockWriteGuard<'static, Synth> {
-    use std::hint::unreachable_unchecked;
-    unsafe {
-        match CHANNEL {
-            Some(ref channel) => match channel.data_mut() {
-                Some(data) => data,
-                None => unreachable_unchecked(),
-            },
-            None => unreachable_unchecked(),
-        }
-    }
-}
-
-struct SynthClass;
+struct SynthClass(Channel<Synth>);
 impl SynthClass {
-    fn set_volume(vm: &WrenVM) {
-        synth_mut().volume = 0.0f32.max(vm.get_slot_double(1) as f32);
+    fn new(vm: &WrenVM) -> Self {
+        let ctx = vm.get_context();
+        ctx.log("Creating channel\n");
+        let mut channel = ctx.create_channel(
+            synth_mix,
+            synth_update,
+            Synth {
+                env: Envelop {
+                    attack: 0.02,
+                    decay: 0.01,
+                    release: 0.02,
+                    start_amp: 1.0,
+                    sustain_amp: 1.0,
+                    trigger_on_time: 0.0,
+                    trigger_off_time: 0.0,
+                    playing: false,
+                },
+                volume: 0.5,
+                r#type: OscType::Saw,
+                frequency: get_note_frequency(4.0, 0.0),
+                length: 0.0,
+                r#loop: false,
+                pattern: None,
+                start_time: 0.0,
+                pending_pattern: None,
+                ..Default::default()
+            },
+        );
+        channel.set_state(ChannelState::Playing);
+        SynthClass(channel)
     }
 
-    fn get_volume(vm: &WrenVM) {
-        vm.set_slot_double(0, synth().volume as f64);
+    fn synth(&self) -> std::sync::RwLockReadGuard<Synth> {
+        self.0.data().unwrap()
+    }
+    fn synth_mut(&mut self) -> std::sync::RwLockWriteGuard<Synth> {
+        self.0.data_mut().unwrap()
     }
 
-    fn play_tone(vm: &WrenVM) {
-        let mut synth = synth_mut();
+    fn set_volume(&mut self, vm: &WrenVM) {
+        self.synth_mut().volume = 0.0f32.max(vm.get_slot_double(1) as f32);
+    }
+
+    fn get_volume(&mut self, vm: &WrenVM) {
+        vm.set_slot_double(0, self.synth().volume as f64);
+    }
+
+    fn play_tone(&mut self, vm: &WrenVM) {
+        let mut synth = self.synth_mut();
         synth.frequency = vm.get_slot_double(1) as f32;
         synth.length = vm.get_slot_double(2) as f32 / 1_000.0;
         synth.start_time = unsafe { GLOBAL_TIME };
@@ -285,10 +298,10 @@ impl SynthClass {
         ctx.log(&format!("Frequency: {}\n", synth.frequency));
     }
 
-    fn play_note(vm: &WrenVM) {
+    fn play_note(&mut self, vm: &WrenVM) {
         let octave = vm.get_slot_double(1) as f32;
         let pitch = vm.get_slot_double(2) as f32;
-        let mut synth = synth_mut();
+        let mut synth = self.synth_mut();
         synth.frequency = get_note_frequency(octave, pitch);
         synth.length = vm.get_slot_double(3) as f32;
         synth.start_time = unsafe { GLOBAL_TIME };
@@ -303,10 +316,10 @@ impl SynthClass {
         ));
     }
 
-    fn note_on(vm: &WrenVM) {
+    fn note_on(&mut self, vm: &WrenVM) {
         let octave = vm.get_slot_double(1) as f32;
         let pitch = vm.get_slot_double(2) as f32;
-        let mut synth = synth_mut();
+        let mut synth = self.synth_mut();
         synth.frequency = get_note_frequency(octave, pitch);
 
         synth.activate();
@@ -316,13 +329,13 @@ impl SynthClass {
         ));
     }
 
-    fn note_off(_vm: &WrenVM) {
-        let mut synth = synth_mut();
+    fn note_off(&mut self, _vm: &WrenVM) {
+        let mut synth = self.synth_mut();
         synth.env.trigger_off_time = unsafe { GLOBAL_TIME };
         synth.env.playing = false;
     }
 
-    fn store_pattern(vm: &WrenVM) {
+    fn store_pattern(&mut self, vm: &WrenVM) {
         const BPM: f64 = 144.0;
         const DEFAULT_DURATION: i8 = 4;
         const DEFAULT_OCTAVE: i8 = 4;
@@ -384,11 +397,11 @@ impl SynthClass {
             ));
         }
 
-        synth_mut().pending_pattern = Some(pattern);
+        self.synth_mut().pending_pattern = Some(pattern);
     }
 
-    fn play_pattern(_vm: &WrenVM) {
-        let mut synth = synth_mut();
+    fn play_pattern(&mut self, _vm: &WrenVM) {
+        let mut synth = self.synth_mut();
         synth.swap_pattern = true;
         synth.active = true;
         synth.env.playing = true;
@@ -403,46 +416,20 @@ fn on_init(ctx: Context) -> Result<(), ()> {
     register_modules! {
         ctx,
         module "synth" {
-            class Synth = SynthClass {
-                foreign static volume=(v) = set_volume
-                foreign static volume = get_volume
-                foreign static playTone(frequency, time) = play_tone
-                foreign static playNote(octave, note, time) = play_note
-                foreign static noteOn(octave, note) = note_on
-                foreign static noteOff() = note_off
-                foreign static storePattern(pattern) = store_pattern
-                foreign static playPattern() = play_pattern
+            foreign class SynthClass_ = new of SynthClass {
+                "construct new_() {}"
+                foreign volume=(v) = set_volume
+                foreign volume = get_volume
+                foreign playTone(frequency, time) = play_tone
+                foreign playNote(octave, note, time) = play_note
+                foreign noteOn(octave, note) = note_on
+                foreign noteOff() = note_off
+                foreign storePattern(pattern) = store_pattern
+                foreign playPattern() = play_pattern
             }
+            "var Synth = SynthClass_.new_()"
         }
     };
-
-    let mut channel = ctx.create_channel(
-        synth_mix,
-        synth_update,
-        Synth {
-            env: Envelop {
-                attack: 0.02,
-                decay: 0.01,
-                release: 0.02,
-                start_amp: 1.0,
-                sustain_amp: 1.0,
-                trigger_on_time: 0.0,
-                trigger_off_time: 0.0,
-                playing: false,
-            },
-            volume: 0.5,
-            r#type: OscType::Saw,
-            frequency: get_note_frequency(4.0, 0.0),
-            length: 0.0,
-            r#loop: false,
-            pattern: None,
-            start_time: 0.0,
-            pending_pattern: None,
-            ..Default::default()
-        },
-    );
-    channel.set_state(ChannelState::Playing);
-    unsafe { CHANNEL = Some(channel) };
 
     Ok(())
 }

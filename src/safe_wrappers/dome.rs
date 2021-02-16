@@ -371,6 +371,19 @@ macro_rules! __register_modules_impl {
             },
         )
     };
+    { @get_module_source
+        items = [{
+            $code:literal
+            $($rest:tt)*
+        }]
+    } => {
+        concat!(
+            "\n", $code, "\n",
+            $crate::__register_modules_impl! { @get_module_source
+                items = [{ $($rest)* }]
+            },
+        )
+    };
 
     { @get_class_source
         items = [{ }]
@@ -564,11 +577,13 @@ macro_rules! __register_modules_impl {
             }
         }
         extern "C" fn __dome_cloomnik_class_finalize(data: *mut $crate::__c_void) {
-            let data = data as *mut $crate::__ForeignWrapper<$foreign_type>;
             // We cannot report the failure, but we still have to not panic
-            // SAFETY: The memory is valid for read/write and is properly aligned
-            // because `ForeignWrapper<T>` is align(1).
-            let _ = ::std::panic::catch_unwind(|| unsafe { ::std::ptr::drop_in_place(data) });
+            let _ = ::std::panic::catch_unwind(|| {
+                // SAFETY: The memory is valid for read/write and is properly aligned
+                // because `ForeignWrapper<T>` is align(1).
+                let data = data as *mut $crate::__ForeignWrapper<$foreign_type>;
+                unsafe { ::std::ptr::drop_in_place(data) };
+            });
         }
         // SAFETY: The allocator always calls `vm.set_slot_new_foreign()` and both the allocator
         // and the finalizer catch panics in user code. User code cannot store the VM because
@@ -615,6 +630,20 @@ macro_rules! __register_modules_impl {
             items = [{ $($class_contents)* }]
             type = [{ $type }]
         }
+        $crate::__register_modules_impl! { @register_module_members
+            ctx = [{ $ctx }]
+            module = [{ $module }]
+            items = [{ $($rest)* }]
+        }
+    };
+    { @register_module_members
+        ctx = [{ $ctx:expr }]
+        module = [{ $module:literal }]
+        items = [{
+            $code:literal
+            $($rest:tt)*
+        }]
+    } => {
         $crate::__register_modules_impl! { @register_module_members
             ctx = [{ $ctx }]
             module = [{ $module }]
