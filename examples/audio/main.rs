@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-use dome_cloomnik::{register_modules, CallbackChannel, Channel, ChannelState, Context, WrenVM};
+use dome_cloomnik::{
+    register_modules, CallbackChannel, Channel, ChannelState, Context, HookResult, WrenVM,
+};
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -410,10 +412,10 @@ impl SynthClass {
     }
 }
 
-fn on_init(mut ctx: Context) -> Result<(), ()> {
+fn on_init(mut ctx: Context) -> HookResult {
     ctx.log("init hook triggered\n");
 
-    register_modules! {
+    (register_modules! {
         ctx,
         module "synth" {
             foreign class SynthClass_ = new of SynthClass {
@@ -429,7 +431,7 @@ fn on_init(mut ctx: Context) -> Result<(), ()> {
             }
             "var Synth = SynthClass_.new_()"
         }
-    };
+    })?;
 
     Ok(())
 }

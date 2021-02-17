@@ -1,6 +1,6 @@
 // Transformed directly from https://github.com/domeengine/dome/blob/ffc47ca273430c2da0b0479ab12f959e57d12ba9/examples/plugin/test.c
 
-use dome_cloomnik::{register_modules, Context, WrenVM};
+use dome_cloomnik::{register_modules, Context, HookResult, WrenVM};
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -34,10 +34,10 @@ impl ExternalClass {
     }
 }
 
-fn on_init(mut ctx: Context) -> Result<(), ()> {
+fn on_init(mut ctx: Context) -> HookResult {
     ctx.log("Initialising external module\n");
 
-    register_modules! {
+    (register_modules! {
         ctx,
         module "external" {
             foreign class ExternalClass = init of ExternalClass {
@@ -45,7 +45,7 @@ fn on_init(mut ctx: Context) -> Result<(), ()> {
                 foreign alert(text) = alert
             }
         }
-    };
+    })?;
 
     Ok(())
 }

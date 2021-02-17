@@ -25,7 +25,7 @@ crate-type = ["cdylib"]
 lib.rs:
 
 ```rust
-use dome_cloomnik::{Context, WrenVM, register_modules};
+use dome_cloomnik::{Context, WrenVM, register_modules, HookResult};
 
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -46,32 +46,32 @@ extern "C" fn PLUGIN_onInit(get_api: *mut libc::c_void, ctx: *mut libc::c_void) 
     }
 }
 
-fn on_init(mut ctx: Context) -> Result<(), ()> {
-    register_modules! {
+fn on_init(mut ctx: Context) -> HookResult {
+    (register_modules! {
         ctx,
         ...
-    };
+    })?;
 
     // ...
 }
 
-fn pre_update(mut ctx: Context) -> Result<(), ()> {
+fn pre_update(mut ctx: Context) -> HookResult {
     // ...
 }
 
-fn post_update(mut ctx: Context) -> Result<(), ()> {
+fn post_update(mut ctx: Context) -> HookResult {
     // ...
 }
 
-fn pre_draw(mut ctx: Context) -> Result<(), ()> {
+fn pre_draw(mut ctx: Context) -> HookResult {
     // ...
 }
 
-fn post_draw(mut ctx: Context) -> Result<(), ()> {
+fn post_draw(mut ctx: Context) -> HookResult {
     // ...
 }
 
-fn on_shutdown(mut ctx: Context) -> Result<(), ()> {
+fn on_shutdown(mut ctx: Context) -> HookResult {
     // ...
 }
 ```

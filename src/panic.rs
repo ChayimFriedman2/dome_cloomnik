@@ -47,6 +47,8 @@ pub(crate) fn handle_wren_callback_panic(vm: crate::unsafe_wren::VM, panic_messa
 pub(crate) fn catch_and_log_panic<R>(
     ctx: Context,
     callback: impl FnOnce() -> R + UnwindSafe,
-) -> Result<R, ()> {
-    catch_panic(callback).map_err(|panic_message| log_panic(ctx, &panic_message))
+) -> Option<R> {
+    catch_panic(callback)
+        .map_err(|panic_message| log_panic(ctx, &panic_message))
+        .ok()
 }

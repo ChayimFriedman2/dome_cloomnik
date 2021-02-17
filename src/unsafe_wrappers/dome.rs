@@ -10,6 +10,7 @@ pub(crate) struct FakeContext {
 }
 pub(crate) type Context = *mut FakeContext;
 
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub(crate) enum Result {
     Success,
@@ -18,22 +19,14 @@ pub(crate) enum Result {
     Unknown,
 }
 
-impl From<std::result::Result<(), ()>> for Result {
-    fn from(value: std::result::Result<(), ()>) -> Self {
-        if value.is_ok() {
-            Self::Success
-        } else {
-            Self::Failure
-        }
-    }
-}
-
-impl From<Result> for std::result::Result<(), ()> {
-    fn from(value: Result) -> Self {
-        if let Result::Success = value {
-            Ok(())
-        } else {
-            Err(())
+impl Result {
+    pub(crate) fn to_result(
+        self,
+        err: impl FnOnce() -> crate::errors::Error,
+    ) -> crate::errors::Result {
+        match self {
+            Result::Success => Ok(()),
+            _ => Err(err()),
         }
     }
 }

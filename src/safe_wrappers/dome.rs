@@ -4,10 +4,9 @@ use std::mem;
 
 use super::audio;
 use super::wren;
+use crate::errors::{Error, Result};
 use crate::unsafe_wrappers::dome as unsafe_dome;
 use crate::Api;
-
-type Result = std::result::Result<(), ()>;
 
 pub(crate) type ForeignFn = wren::ForeignMethodFn;
 pub(crate) type FinalizerFn = wren::FinalizerFn;
@@ -39,16 +38,19 @@ impl Context<'_> {
     ///
     /// ```
     /// # let ctx: Context;
-    /// ctx.register_module("my-module", r#"
+    /// ctx.register_module("my-module", r"
     ///     class MyClass {}
-    /// "#)
-    /// .unwrap();
+    /// ")?;
     /// ```
     #[inline]
     pub fn register_module(&mut self, name: &str, source: &str) -> Result {
-        let name = CString::new(name).expect("Module name contains null byte(s).");
-        let source = CString::new(source).expect("Source contains null byte(s).");
-        (Api::dome().register_module)(self.0, name.as_ptr(), source.as_ptr()).into()
+        let c_name = CString::new(name).expect("Module name contains null byte(s).");
+        let c_source = CString::new(source).expect("Source contains null byte(s).");
+        (Api::dome().register_module)(self.0, c_name.as_ptr(), c_source.as_ptr()).to_result(|| {
+            Error::ModuleRegistrationFailed {
+                module_name: name.to_owned(),
+            }
+        })
     }
 
     /// Register a foreign method in `module` with `signature` of the following form:
@@ -59,7 +61,7 @@ impl Context<'_> {
     ///
     /// For more information about Wren signatures, see [Wren docs](https://wren.io/method-calls.html#signature).
     ///
-    /// Fails if the same method is already registered.
+    /// Fails if the module doesn't exist or it is locked.
     ///
     /// # Safety
     ///
@@ -75,15 +77,14 @@ impl Context<'_> {
     ///
     /// ```
     /// # let ctx: Context;
-    /// ctx.register_module("my-module", r#"
+    /// ctx.register_module("my-module", r"
     ///     class MyClass {
     ///         foreign myGetter
     ///     }
-    /// "#)
-    /// .unwrap();
+    /// ")?;
     /// extern "C" fn my_fn(vm: WrenVM) {}
     /// # unsafe {
-    /// ctx.register_fn("my-module", "MyClass.myGetter", my_fn).unwrap();
+    /// ctx.register_fn("my-module", "MyClass.myGetter", my_fn)?;
     /// # }
     /// ```
     #[inline]
@@ -93,20 +94,23 @@ impl Context<'_> {
         signature: &str,
         method: ForeignFn,
     ) -> Result {
-        let module = CString::new(module).expect("Method name contains null byte(s).");
-        let signature = CString::new(signature).expect("Method signature contains null byte(s).");
+        let c_module = CString::new(module).expect("Method name contains null byte(s).");
+        let c_signature = CString::new(signature).expect("Method signature contains null byte(s).");
         (Api::dome().register_fn)(
             self.0,
-            module.as_ptr(),
-            signature.as_ptr(),
+            c_module.as_ptr(),
+            c_signature.as_ptr(),
             mem::transmute(method),
         )
-        .into()
+        .to_result(|| Error::MethodRegistrationFailed {
+            module_name: module.to_owned(),
+            method_signature: signature.to_owned(),
+        })
     }
 
     /// Register a foreign class in `module` with `allocate` and possibly `finalizer`:
     ///
-    /// Fails if the same class is already registered.
+    /// Fails if the module doesn't exist or it is locked.
     ///
     /// # Safety
     ///
@@ -123,16 +127,15 @@ impl Context<'_> {
     ///
     /// ```
     /// # let ctx: Context;
-    /// ctx.register_module("my-module", r#"
+    /// ctx.register_module("my-module", r"
     ///     foreign class MyClass {
     ///         construct new() {}
     ///     }
-    /// "#)
-    /// .unwrap();
+    /// ")?;
     /// extern "C" fn allocate(vm: WrenVM) {}
     /// extern "C" fn finalize(data: *mut libc::c_void) {}
     /// # unsafe {
-    /// ctx.register_class("my-module", "MyClass", allocate, Some(finalize)).unwrap();
+    /// ctx.register_class("my-module", "MyClass", allocate, Some(finalize))?;
     /// # }
     /// ```
     #[inline]
@@ -143,16 +146,19 @@ impl Context<'_> {
         allocate: ForeignFn,
         finalize: Option<FinalizerFn>,
     ) -> Result {
-        let module_name = CString::new(module_name).expect("Module name contains null byte(s).");
-        let class_name = CString::new(class_name).expect("Class name contains null byte(s).");
+        let c_module_name = CString::new(module_name).expect("Module name contains null byte(s).");
+        let c_class_name = CString::new(class_name).expect("Class name contains null byte(s).");
         (Api::dome().register_class)(
             self.0,
-            module_name.as_ptr(),
-            class_name.as_ptr(),
+            c_module_name.as_ptr(),
+            c_class_name.as_ptr(),
             mem::transmute(allocate),
             finalize,
         )
-        .into()
+        .to_result(|| Error::ClassRegistrationFailed {
+            module_name: module_name.to_owned(),
+            class_name: class_name.to_owned(),
+        })
     }
 
     /// Locks a module, preventing extending it later.
@@ -267,7 +273,7 @@ impl Context<'_> {
 ///         pub(super) fn foreign_getter(vm: &mut WrenVM) {}
 ///     }
 /// }
-/// register_modules! {
+/// (register_modules! {
 ///     ctx,
 ///     module "my-module" {
 ///         foreign class MyClass = new of MyType {
@@ -293,7 +299,7 @@ impl Context<'_> {
 ///         }
 ///     }
 ///     module "my-second-module" {}
-/// }
+/// })?;
 /// ```
 #[macro_export]
 macro_rules! register_modules {
@@ -317,25 +323,31 @@ macro_rules! __register_modules_impl {
         modules = [{ $(
             module $module_name:literal { $($module_contents:tt)* }
         )+ }]
-    } => {
+    } => {{
+        let mut result: $crate::Result = Ok(());
         $(
-            $ctx.register_module(
-                $module_name,
-                $crate::__register_modules_impl! { @get_module_source
+            result = result.and_then(|()| {
+                $ctx.register_module(
+                    $module_name,
+                    $crate::__register_modules_impl! { @get_module_source
+                        items = [{ $($module_contents)* }]
+                    }
+                )
+            })
+            .and_then(|()| {
+                let result = $crate::__register_modules_impl! { @register_module_members
+                    ctx = [{ $ctx }]
+                    module = [{ $module_name }]
                     items = [{ $($module_contents)* }]
-                }
-            )
-            .unwrap();
+                };
 
-            $crate::__register_modules_impl! { @register_module_members
-                ctx = [{ $ctx }]
-                module = [{ $module_name }]
-                items = [{ $($module_contents)* }]
-            }
+                $ctx.lock_module($module_name);
 
-            $ctx.lock_module($module_name);
+                result
+            });
         )+
-    };
+        result
+    }};
 
     { @get_module_source
         items = [{ }]
@@ -560,7 +572,7 @@ macro_rules! __register_modules_impl {
         ctx = [{ $ctx:expr }]
         module = [{ $module:literal }]
         items = [{ }]
-    } => { };
+    } => { Ok(()) };
     { @register_module_members
         ctx = [{ $ctx:expr }]
         module = [{ $module:literal }]
@@ -605,20 +617,23 @@ macro_rules! __register_modules_impl {
                 },
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $name }]
-            items = [{ $($class_contents)* }]
-            type = [{ $foreign_type }]
-            foreign_type = [{ $foreign_type }]
-        }
-        $crate::__register_modules_impl! { @register_module_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            items = [{ $($rest)* }]
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $name }]
+                items = [{ $($class_contents)* }]
+                type = [{ $foreign_type }]
+                foreign_type = [{ $foreign_type }]
+            }
+        })
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_module_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                items = [{ $($rest)* }]
+            }
+        })
     }};
     { @register_module_members
         ctx = [{ $ctx:expr }]
@@ -635,11 +650,13 @@ macro_rules! __register_modules_impl {
             items = [{ $($class_contents)* }]
             type = [{ $type }]
         }
-        $crate::__register_modules_impl! { @register_module_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            items = [{ $($rest)* }]
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_module_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                items = [{ $($rest)* }]
+            }
+        })
     };
     { @register_module_members
         ctx = [{ $ctx:expr }]
@@ -670,7 +687,7 @@ macro_rules! __register_modules_impl {
         items = [{ }]
         type = [{ $($type:tt)+ }]
         $(foreign_type = [{ $($foreign_type:tt)+ }])?
-    } => { };
+    } => { Ok(()) };
     // Static getter
     { @register_class_members
         ctx = [{ $ctx:expr }]
@@ -693,15 +710,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Instance getter
     { @register_class_members
@@ -730,15 +748,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Static setter
     { @register_class_members
@@ -762,15 +781,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Instance setter
     { @register_class_members
@@ -799,15 +819,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Static method
     { @register_class_members
@@ -836,15 +857,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Instance method
     { @register_class_members
@@ -878,15 +900,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Static subscript getter
     { @register_class_members
@@ -913,15 +936,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Instance subscript getter
     { @register_class_members
@@ -953,15 +977,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Static subscript setter
     { @register_class_members
@@ -988,15 +1013,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Instance subscript setter
     { @register_class_members
@@ -1028,15 +1054,16 @@ macro_rules! __register_modules_impl {
                 __dome_cloomnik_method,
             )
         }
-        .unwrap();
-        $crate::__register_modules_impl! { @register_class_members
-            ctx = [{ $ctx }]
-            module = [{ $module }]
-            class = [{ $class }]
-            items = [{ $($rest)* }]
-            type = [{ $($type)+ }]
-            $(foreign_type = [{ $($foreign_type)+ }])?
-        }
+        .and_then(|()| {
+            $crate::__register_modules_impl! { @register_class_members
+                ctx = [{ $ctx }]
+                module = [{ $module }]
+                class = [{ $class }]
+                items = [{ $($rest)* }]
+                type = [{ $($type)+ }]
+                $(foreign_type = [{ $($foreign_type)+ }])?
+            }
+        })
     }};
     // Non-foreign method (of any kind)
     { @register_class_members

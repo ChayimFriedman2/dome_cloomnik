@@ -21,7 +21,7 @@
 //!
 //! lib.rs:
 //! ```
-//! use dome_cloomnik::{Context, WrenVM, register_modules};
+//! use dome_cloomnik::{Context, WrenVM, register_modules, HookResult};
 //!
 //! #[no_mangle]
 //! #[allow(non_snake_case)]
@@ -42,32 +42,32 @@
 //!     }
 //! }
 //!
-//! fn on_init(mut ctx: Context) -> Result<(), ()> {
-//!     register_modules! {
+//! fn on_init(mut ctx: Context) -> HookResult {
+//!     (register_modules! {
 //!         ctx,
 //!         ...
-//!     };
+//!     })?;
 //!
 //!     // ...
 //! }
 //!
-//! fn pre_update(mut ctx: Context) -> Result<(), ()> {
+//! fn pre_update(mut ctx: Context) -> HookResult {
 //!     // ...
 //! }
 //!
-//! fn post_update(mut ctx: Context) -> Result<(), ()> {
+//! fn post_update(mut ctx: Context) -> HookResult {
 //!     // ...
 //! }
 //!
-//! fn pre_draw(mut ctx: Context) -> Result<(), ()> {
+//! fn pre_draw(mut ctx: Context) -> HookResult {
 //!     // ...
 //! }
 //!
-//! fn post_draw(mut ctx: Context) -> Result<(), ()> {
+//! fn post_draw(mut ctx: Context) -> HookResult {
 //!     // ...
 //! }
 //!
-//! fn on_shutdown(mut ctx: Context) -> Result<(), ()> {
+//! fn on_shutdown(mut ctx: Context) -> HookResult {
 //!     // ...
 //! }
 //! ```
@@ -75,12 +75,12 @@
 //! Go ahead, and start with [learning DOME plugins from the docs](https://domeengine.com/plugins/).
 //! Don't worry, much of the things there will apply to doom_cloomnik too!
 
+mod errors;
 mod panic;
 mod safe_wrappers;
 mod unsafe_wrappers;
 
 use libc::{c_int, c_void};
-use std::convert;
 use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
@@ -90,6 +90,7 @@ use unsafe_wrappers::audio as unsafe_audio;
 use unsafe_wrappers::dome::{self as unsafe_dome, Result as DomeResult};
 use unsafe_wrappers::wren as unsafe_wren;
 
+pub use errors::{Error, Result};
 pub use safe_wrappers::audio::{CallbackChannel, Channel, ChannelMix, ChannelState, ChannelUpdate};
 pub use safe_wrappers::dome::Context;
 pub use safe_wrappers::wren::{Type as WrenType, VM as WrenVM};
@@ -170,8 +171,10 @@ impl Api {
     }
 }
 
+/// DOME plugin hook result.
+pub type HookResult = anyhow::Result<()>;
 /// DOME plugin hook.
-pub type Hook = fn(Context) -> Result<(), ()>;
+pub type Hook = fn(Context) -> HookResult;
 #[derive(Clone, Copy)]
 /// A struct containing all plugin hooks. All hooks are optional.
 pub struct Hooks {
@@ -194,9 +197,14 @@ static mut HOOKS: Hooks = Hooks {
 #[inline]
 fn invoke_hook(ctx: unsafe_dome::Context, callback: Option<Hook>) -> DomeResult {
     callback.map_or(DomeResult::Success, |callback| {
-        catch_and_log_panic(ctx, || callback(Context(ctx, PhantomData)))
-            .and_then(convert::identity) // TODO: Replace with `.flatten()` once stabilized
-            .into()
+        match catch_and_log_panic(ctx, || callback(Context(ctx, PhantomData))) {
+            Some(Ok(())) => DomeResult::Success,
+            Some(Err(err)) => {
+                Context(ctx, PhantomData).log(&err.to_string());
+                DomeResult::Failure
+            }
+            None => DomeResult::Failure,
+        }
     })
 }
 
