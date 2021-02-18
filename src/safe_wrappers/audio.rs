@@ -2,7 +2,6 @@ use libc::{c_float, size_t};
 use std::alloc::{self, Layout};
 use std::cell::UnsafeCell;
 use std::convert::TryInto;
-use std::ffi::CString;
 use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
@@ -10,7 +9,7 @@ use std::slice;
 use std::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::wren;
-use crate::panic::{catch_panic, handle_wren_callback_panic};
+use crate::panic::{catch_panic, handle_wren_callback_panic, PanicInfo};
 use crate::unsafe_wrappers::audio as unsafe_audio;
 use crate::unsafe_wrappers::wren as unsafe_wren;
 use crate::Api;
@@ -19,7 +18,7 @@ pub use unsafe_audio::ChannelState;
 pub(crate) struct InternalChannelData {
     mix: fn(&unsafe_audio::ChannelRef, &mut [[f32; 2]], usize),
     update: Option<fn(&unsafe_audio::ChannelRef, &unsafe_wren::VM)>,
-    mix_error: Mutex<Option<CString>>,
+    mix_error: Mutex<Option<PanicInfo>>,
 
     drop_fn: unsafe fn(*mut InternalChannelData),
     layout: Layout,
@@ -86,12 +85,12 @@ pub(crate) extern "C" fn mix(
 }
 
 #[inline]
-fn handle_mix_error(vm: unsafe_wren::VM, mix_error: &Mutex<Option<CString>>) {
+fn handle_mix_error(vm: unsafe_wren::VM, mix_error: &Mutex<Option<PanicInfo>>) {
     // OK to `.unwrap()` the mutex lock (even though panicking across FFI is undefined
     // behavior) since the mutex locking can only fail if it is poisoned (a thread
     // panicked while holding it), and we know we never panic while holding this mutex
-    if let Some(panic_message) = mix_error.lock().unwrap().take() {
-        handle_wren_callback_panic(vm, &panic_message);
+    if let Some(panic_info) = mix_error.lock().unwrap().take() {
+        handle_wren_callback_panic(vm, &panic_info);
     };
 }
 

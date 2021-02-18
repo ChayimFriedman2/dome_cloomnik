@@ -14,6 +14,7 @@ readme = "README.md"
 libc = "0.2"
 anyhow = "1.0"
 thiserror = "1.0"
+backtrace = "0.3"
 
 [dev-dependencies]
 atoi = "0.4"
