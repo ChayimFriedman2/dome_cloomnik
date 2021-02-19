@@ -42,7 +42,7 @@ pub struct VM(pub(crate) unsafe_wren::VM);
 /// A handle is a long-lived value, as opposed to a slot which is short-lived.
 ///
 /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct Handle(unsafe_wren::Handle);
 
