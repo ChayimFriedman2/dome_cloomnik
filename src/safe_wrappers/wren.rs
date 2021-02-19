@@ -42,9 +42,17 @@ pub struct VM(pub(crate) unsafe_wren::VM);
 /// A handle is a long-lived value, as opposed to a slot which is short-lived.
 ///
 /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
-#[derive(Debug, Clone, Copy)]
-#[repr(transparent)]
-pub struct Handle(unsafe_wren::Handle);
+#[derive(Debug)]
+pub struct Handle {
+    handle: unsafe_wren::Handle,
+    vm: unsafe_wren::VM,
+}
+
+impl Drop for Handle {
+    fn drop(&mut self) {
+        (Api::wren().release_handle)(self.vm, self.handle);
+    }
+}
 
 pub(crate) type ForeignMethodFn = extern "C" fn(VM);
 pub(crate) type FinalizerFn = extern "C" fn(*mut c_void);
@@ -880,10 +888,10 @@ impl VM {
     /// You must provide this function a valid `slot`.
     #[inline]
     pub unsafe fn get_slot_handle_unchecked(&mut self, slot: usize) -> Handle {
-        Handle((Api::wren().get_slot_handle)(
-            self.0,
-            slot.try_into().unwrap(),
-        ))
+        Handle {
+            handle: (Api::wren().get_slot_handle)(self.0, slot.try_into().unwrap()),
+            vm: self.0,
+        }
     }
     /// Retrieves a long-lived [`Handle`] from a short-lived `slot`.
     ///
@@ -904,7 +912,7 @@ impl VM {
     /// You must provide this function a valid `slot`.
     #[inline]
     pub unsafe fn set_slot_handle_unchecked(&mut self, slot: usize, handle: Handle) {
-        (Api::wren().set_slot_handle)(self.0, slot.try_into().unwrap(), handle.0)
+        (Api::wren().set_slot_handle)(self.0, slot.try_into().unwrap(), handle.handle)
     }
     /// Retrieves a long-lived [`Handle`] from a short-lived `slot`.
     ///

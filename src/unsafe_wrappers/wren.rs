@@ -85,4 +85,5 @@ pub(crate) struct ApiV0 {
         extern "C" fn(vm: VM, module: *const c_char, name: *const c_char, slot: c_int),
     pub(crate) get_slot_handle: unsafe extern "C" fn(vm: VM, slot: c_int) -> Handle,
     pub(crate) set_slot_handle: unsafe extern "C" fn(vm: VM, slot: c_int, handle: Handle),
+    pub(crate) release_handle: extern "C" fn(vm: VM, handle: Handle),
 }
