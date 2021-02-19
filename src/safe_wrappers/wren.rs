@@ -911,14 +911,14 @@ impl VM {
     ///
     /// You must provide this function a valid `slot`.
     #[inline]
-    pub unsafe fn set_slot_handle_unchecked(&mut self, slot: usize, handle: Handle) {
+    pub unsafe fn set_slot_handle_unchecked(&mut self, slot: usize, handle: &Handle) {
         (Api::wren().set_slot_handle)(self.0, slot.try_into().unwrap(), handle.handle)
     }
     /// Retrieves a long-lived [`Handle`] from a short-lived `slot`.
     ///
     /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
     #[inline]
-    pub fn set_slot_handle(&mut self, slot: usize, handle: Handle) {
+    pub fn set_slot_handle(&mut self, slot: usize, handle: &Handle) {
         self.validate_slot(slot);
         // SAFETY: We just validated the slot.
         unsafe { self.set_slot_handle_unchecked(slot, handle) }
