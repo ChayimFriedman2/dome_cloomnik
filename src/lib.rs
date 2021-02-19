@@ -93,7 +93,7 @@ use unsafe_wrappers::wren as unsafe_wren;
 pub use errors::{Error, Result};
 pub use safe_wrappers::audio::{CallbackChannel, Channel, ChannelMix, ChannelState, ChannelUpdate};
 pub use safe_wrappers::dome::Context;
-pub use safe_wrappers::wren::{Type as WrenType, VM as WrenVM};
+pub use safe_wrappers::wren::{Handle as WrenHandle, Type as WrenType, VM as WrenVM};
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]

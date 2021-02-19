@@ -10,6 +10,12 @@ pub(crate) struct FakeVM {
 }
 pub(crate) type VM = *mut FakeVM;
 
+#[repr(C)]
+pub(crate) struct FakeHandle {
+    _private: [u8; 0],
+}
+pub(crate) type Handle = *mut FakeHandle;
+
 pub(crate) type ForeignMethodFn = extern "C" fn(VM);
 pub(crate) type FinalizerFn = extern "C" fn(*mut c_void);
 
@@ -74,4 +80,9 @@ pub(crate) struct ApiV0 {
         unsafe extern "C" fn(vm: VM, map_slot: c_int, key_slot: c_int, value_slot: c_int),
     pub(crate) remove_map_value:
         unsafe extern "C" fn(vm: VM, map_slot: c_int, key_slot: c_int, removed_value_slot: c_int),
+
+    pub(crate) get_variable:
+        extern "C" fn(vm: VM, module: *const c_char, name: *const c_char, slot: c_int),
+    pub(crate) get_slot_handle: unsafe extern "C" fn(vm: VM, slot: c_int) -> Handle,
+    pub(crate) set_slot_handle: unsafe extern "C" fn(vm: VM, slot: c_int, handle: Handle),
 }

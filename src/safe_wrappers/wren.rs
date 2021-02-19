@@ -1,6 +1,7 @@
 use libc::{c_char, c_int, c_void};
 use std::any::TypeId;
 use std::convert::TryInto;
+use std::ffi::CString;
 use std::marker::PhantomData;
 use std::mem;
 use std::ptr;
@@ -37,6 +38,13 @@ impl<T> ForeignWrapper<T> {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct VM(pub(crate) unsafe_wren::VM);
+
+/// A handle is a long-lived value, as opposed to a slot which is short-lived.
+///
+/// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct Handle(unsafe_wren::Handle);
 
 pub(crate) type ForeignMethodFn = extern "C" fn(VM);
 pub(crate) type FinalizerFn = extern "C" fn(*mut c_void);
@@ -834,5 +842,77 @@ impl VM {
         self.validate_slot(slot);
         // SAFETY: We verified that `slot` exists.
         unsafe { self.abort_fiber_unchecked(slot) }
+    }
+
+    /// Retrieves the variable with `name` in `module` int `slot`..
+    ///
+    /// # Safety
+    ///
+    /// `slot` must be valid. `name` must exist inside `module`.
+    #[inline]
+    pub unsafe fn get_variable_unchecked(&mut self, module: &str, name: &str, slot: usize) {
+        let module = CString::new(module).expect("Module name contains null byte(s).");
+        let name = CString::new(name).expect("Variable name contains null byte(s).");
+        (Api::wren().get_variable)(
+            self.0,
+            module.as_ptr(),
+            name.as_ptr(),
+            slot.try_into().unwrap(),
+        )
+    }
+    /// Retrieves the variable with `name` in `module` int `slot`..
+    ///
+    /// # Safety
+    ///
+    /// `name` must exist inside `module`.
+    #[inline]
+    pub unsafe fn get_variable(&mut self, module: &str, name: &str, slot: usize) {
+        self.validate_slot(slot);
+        self.get_variable_unchecked(module, name, slot)
+    }
+
+    /// Retrieves a long-lived [`Handle`] from a short-lived `slot`.
+    ///
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
+    ///
+    /// # Safety
+    ///
+    /// You must provide this function a valid `slot`.
+    #[inline]
+    pub unsafe fn get_slot_handle_unchecked(&mut self, slot: usize) -> Handle {
+        Handle((Api::wren().get_slot_handle)(
+            self.0,
+            slot.try_into().unwrap(),
+        ))
+    }
+    /// Retrieves a long-lived [`Handle`] from a short-lived `slot`.
+    ///
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
+    #[inline]
+    pub fn get_slot_handle(&mut self, slot: usize) -> Handle {
+        self.validate_slot(slot);
+        // SAFETY: We just validated the slot.
+        unsafe { self.get_slot_handle_unchecked(slot) }
+    }
+
+    /// Sets `slot` to `handle`.
+    ///
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
+    ///
+    /// # Safety
+    ///
+    /// You must provide this function a valid `slot`.
+    #[inline]
+    pub unsafe fn set_slot_handle_unchecked(&mut self, slot: usize, handle: Handle) {
+        (Api::wren().set_slot_handle)(self.0, slot.try_into().unwrap(), handle.0)
+    }
+    /// Retrieves a long-lived [`Handle`] from a short-lived `slot`.
+    ///
+    /// See [Wren docs](https://wren.io/embedding/slots-and-handles.html) for more.
+    #[inline]
+    pub fn set_slot_handle(&mut self, slot: usize, handle: Handle) {
+        self.validate_slot(slot);
+        // SAFETY: We just validated the slot.
+        unsafe { self.set_slot_handle_unchecked(slot, handle) }
     }
 }
